@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-12 11:25:25 +03:00",
+ "generatedAt": "2026-10-12 11:31:00 +03:00",
  "timezone": "Asia/Riyadh",
  "items": [
   {
@@ -157,13 +157,24 @@
    "partial": false
   },
   {
+   "name": "CSI 300",
+   "symbol": "1.000300",
+   "source": "eastmoney",
+   "asOf": "2026-10-09",
+   "close": 4317.25,
+   "chgDay": 0.16,
+   "chgYtd": -6.75,
+   "unit": "pct",
+   "partial": false
+  },
+  {
    "name": "Tadawul TASI",
    "symbol": "^TASI.SR",
    "source": "yahoo-meta",
    "asOf": "2026-10-12",
-   "close": 10293.8398,
-   "chgDay": -0.65,
-   "chgYtd": -1.88,
+   "close": 10290.4004,
+   "chgDay": -0.68,
+   "chgYtd": -1.91,
    "unit": "pct",
    "partial": false
   },
@@ -212,7 +223,5 @@
    "partial": false
   }
  ],
- "missing": [
-  "CSI 300 (eastmoney) - Remote end closed connection without response"
- ]
+ "missing": []
 }

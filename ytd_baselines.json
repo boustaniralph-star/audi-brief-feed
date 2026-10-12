@@ -1,0 +1,7 @@
+{
+  "_comment": "Prior-year final closes, used to compute YTD for instruments whose data source gives no history. Update once each January. TASI 2025 close per Tadawul's annual statistical report (12,036.50 at end-2024, -12.84% over 2025).",
+  "year": 2025,
+  "closes": {
+    "Tadawul TASI": 10490.69
+  }
+}

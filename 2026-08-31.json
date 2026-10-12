@@ -1,0 +1,229 @@
+﻿{
+    "generatedAt":  "2026-08-31 09:59:41 +03:00",
+    "timezone":  "Asia/Riyadh",
+    "items":  [
+                  {
+                      "name":  "S\u0026P 500",
+                      "symbol":  "^GSPC",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  7711.7598,
+                      "chgDay":  -0.25,
+                      "chgYtd":  12.65,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "Nasdaq Composite",
+                      "symbol":  "^IXIC",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  26402.4199,
+                      "chgDay":  -0.52,
+                      "chgYtd":  13.6,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "Dow Jones",
+                      "symbol":  "^DJI",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  53559.9883,
+                      "chgDay":  -0.02,
+                      "chgYtd":  11.44,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "STOXX 600",
+                      "symbol":  "^STOXX",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  655.16,
+                      "chgDay":  0.51,
+                      "chgYtd":  10.52,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "DAX",
+                      "symbol":  "^GDAXI",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  26569.9902,
+                      "chgDay":  0.77,
+                      "chgYtd":  8.49,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "CAC 40",
+                      "symbol":  "^FCHI",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  8401.1797,
+                      "chgDay":  0.98,
+                      "chgYtd":  3.09,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "FTSE 100",
+                      "symbol":  "^FTSE",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  10824.2998,
+                      "chgDay":  0.29,
+                      "chgYtd":  8.99,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "Nikkei 225",
+                      "symbol":  "^N225",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-31",
+                      "close":  66311.9297,
+                      "chgDay":  -0.14,
+                      "chgYtd":  31.73,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "Hang Seng",
+                      "symbol":  "^HSI",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  25584.7891,
+                      "chgDay":  0.07,
+                      "chgYtd":  -0.18,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "Sensex",
+                      "symbol":  "^BSESN",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  77264.5078,
+                      "chgDay":  0.43,
+                      "chgYtd":  -9.34,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "Brent",
+                      "symbol":  "BZ=F",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  89.31,
+                      "chgDay":  -0.43,
+                      "chgYtd":  46.77,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "WTI",
+                      "symbol":  "CL=F",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  83.4,
+                      "chgDay":  -0.16,
+                      "chgYtd":  45.25,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "Gold",
+                      "symbol":  "GC=F",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  4478.1001,
+                      "chgDay":  -2.85,
+                      "chgYtd":  3.53,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "Dollar Index",
+                      "symbol":  "DX-Y.NYB",
+                      "source":  "yahoo",
+                      "asOf":  "2026-08-28",
+                      "close":  99.7,
+                      "chgDay":  0.54,
+                      "chgYtd":  1.44,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "CSI 300",
+                      "symbol":  "1.000300",
+                      "source":  "eastmoney",
+                      "asOf":  "2026-08-28",
+                      "close":  4609.18,
+                      "chgDay":  -0.46,
+                      "chgYtd":  -0.45,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "Tadawul TASI",
+                      "symbol":  "^TASI.SR",
+                      "source":  "yahoo-meta",
+                      "asOf":  "2026-08-30",
+                      "close":  11158.54,
+                      "chgDay":  -0.71,
+                      "chgYtd":  6.37,
+                      "unit":  "pct",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "US 2Y yield",
+                      "symbol":  "UST 2 Yr",
+                      "source":  "ustreasury",
+                      "asOf":  "2026-08-28",
+                      "close":  4.34,
+                      "chgDay":  14,
+                      "chgYtd":  87,
+                      "unit":  "bps",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "US 10Y yield",
+                      "symbol":  "UST 10 Yr",
+                      "source":  "ustreasury",
+                      "asOf":  "2026-08-28",
+                      "close":  4.73,
+                      "chgDay":  6,
+                      "chgYtd":  55,
+                      "unit":  "bps",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "US 30Y yield",
+                      "symbol":  "UST 30 Yr",
+                      "source":  "ustreasury",
+                      "asOf":  "2026-08-28",
+                      "close":  5.22,
+                      "chgDay":  3,
+                      "chgYtd":  38,
+                      "unit":  "bps",
+                      "partial":  false
+                  },
+                  {
+                      "name":  "SOFR",
+                      "symbol":  "SOFR",
+                      "source":  "nyfed",
+                      "asOf":  "2026-08-27",
+                      "close":  3.64,
+                      "chgDay":  0,
+                      "chgYtd":  -23,
+                      "unit":  "bps",
+                      "partial":  false
+                  }
+              ],
+    "missing":  [
+
+                ]
+}

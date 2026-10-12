@@ -1,0 +1,218 @@
+{
+ "generatedAt": "2026-10-12 11:25:25 +03:00",
+ "timezone": "Asia/Riyadh",
+ "items": [
+  {
+   "name": "S&P 500",
+   "symbol": "^GSPC",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 7811.54,
+   "chgDay": 0.59,
+   "chgYtd": 14.11,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Nasdaq Composite",
+   "symbol": "^IXIC",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 27366.1699,
+   "chgDay": 0.64,
+   "chgYtd": 17.74,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Dow Jones",
+   "symbol": "^DJI",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 51654.9492,
+   "chgDay": 0.83,
+   "chgYtd": 7.47,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "STOXX 600",
+   "symbol": "^STOXX",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 631.55,
+   "chgDay": 0.97,
+   "chgYtd": 6.54,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "DAX",
+   "symbol": "^GDAXI",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 25087.2695,
+   "chgDay": 1.13,
+   "chgYtd": 2.44,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "CAC 40",
+   "symbol": "^FCHI",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 7803.3301,
+   "chgDay": 0.95,
+   "chgYtd": -4.25,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "FTSE 100",
+   "symbol": "^FTSE",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 10552.0996,
+   "chgDay": 1.06,
+   "chgYtd": 6.25,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Nikkei 225",
+   "symbol": "^N225",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 69030.9219,
+   "chgDay": -0.02,
+   "chgYtd": 37.13,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Hang Seng",
+   "symbol": "^HSI",
+   "source": "yahoo",
+   "asOf": "2026-10-12",
+   "close": 24271.1992,
+   "chgDay": 0.25,
+   "chgYtd": -5.3,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Sensex",
+   "symbol": "^BSESN",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 72472.3281,
+   "chgDay": 1.23,
+   "chgYtd": -14.96,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Brent",
+   "symbol": "BZ=F",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 104.72,
+   "chgDay": 0.42,
+   "chgYtd": 72.1,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "WTI",
+   "symbol": "CL=F",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 91.85,
+   "chgDay": 0.39,
+   "chgYtd": 59.96,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Gold",
+   "symbol": "GC=F",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 4216.2998,
+   "chgDay": 1.43,
+   "chgYtd": -2.87,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Dollar Index",
+   "symbol": "DX-Y.NYB",
+   "source": "yahoo",
+   "asOf": "2026-10-09",
+   "close": 102.21,
+   "chgDay": 0.07,
+   "chgYtd": 4.0,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Tadawul TASI",
+   "symbol": "^TASI.SR",
+   "source": "yahoo-meta",
+   "asOf": "2026-10-12",
+   "close": 10293.8398,
+   "chgDay": -0.65,
+   "chgYtd": -1.88,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "US 2Y yield",
+   "symbol": "UST 2 Yr",
+   "source": "ustreasury",
+   "asOf": "2026-10-09",
+   "close": 4.8,
+   "chgDay": 5.0,
+   "chgYtd": 133.0,
+   "unit": "bps",
+   "partial": false
+  },
+  {
+   "name": "US 10Y yield",
+   "symbol": "UST 10 Yr",
+   "source": "ustreasury",
+   "asOf": "2026-10-09",
+   "close": 5.24,
+   "chgDay": 2.0,
+   "chgYtd": 106.0,
+   "unit": "bps",
+   "partial": false
+  },
+  {
+   "name": "US 30Y yield",
+   "symbol": "UST 30 Yr",
+   "source": "ustreasury",
+   "asOf": "2026-10-09",
+   "close": 5.6,
+   "chgDay": 0.0,
+   "chgYtd": 76.0,
+   "unit": "bps",
+   "partial": false
+  },
+  {
+   "name": "SOFR",
+   "symbol": "SOFR",
+   "source": "nyfed",
+   "asOf": "2026-10-08",
+   "close": 3.87,
+   "chgDay": -1.0,
+   "chgYtd": 0.0,
+   "unit": "bps",
+   "partial": false
+  }
+ ],
+ "missing": [
+  "CSI 300 (eastmoney) - Remote end closed connection without response"
+ ]
+}

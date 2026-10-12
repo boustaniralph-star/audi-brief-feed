@@ -1,0 +1,51 @@
+name: brief-send
+on:
+  schedule:
+    - cron: "*/10 6-7 * * *"      # every 10 minutes, 09:00-10:50 Riyadh
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: brief-send
+  cancel-in-progress: false
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    env:
+      GMAIL_USER: ${{ secrets.GMAIL_USER }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+      PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
+      RECIPIENTS_TEST: ${{ secrets.RECIPIENTS_TEST }}
+      RECIPIENTS_LIVE: ${{ secrets.RECIPIENTS_LIVE }}
+      BRIEF_MODE: ${{ vars.BRIEF_MODE || 'test' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Look for today's package
+        id: detect
+        run: python3 mailer.py detect
+      - name: Install build tools
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils libpango-1.0-0 libpangoft2-1.0-0 fontconfig fonts-inter fonts-ibm-plex
+          pip install -q weasyprint==70.0 matplotlib==3.11.2 numpy==2.5.3 pillow pydyf==0.12.1
+          mkdir -p ~/.fonts ~/.config/fontconfig
+          for w in Regular Medium SemiBold Bold ExtraBold; do cp /usr/share/fonts/opentype/inter/Inter-$w.otf ~/.fonts/; done
+          for w in Regular Medium SemiBold Bold; do cp /usr/share/fonts/truetype/ibm-plex/IBMPlexMono-$w.ttf ~/.fonts/; done
+          cp kit/fonts.conf ~/.config/fontconfig/fonts.conf
+          base64 -d kit/wordmark.b64 > kit/wordmark.png
+          base64 -d kit/circles.b64 > kit/circles.png
+          fc-cache -f
+      - name: Build, check and send
+        if: steps.detect.outputs.found == 'true'
+        run: python3 mailer.py send
+      - name: Record result
+        if: always()
+        run: |
+          git config user.name "brief-bot"
+          git config user.email "brief-bot@users.noreply.github.com"
+          git add sent/
+          git diff --cached --quiet || (git commit -m "brief status $(date -u +%Y-%m-%d)" && git pull --rebase -q && git push)

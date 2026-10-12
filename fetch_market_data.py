@@ -77,11 +77,8 @@ def yahoo(name, symbol, now=None):
     return row(name, symbol, "yahoo", ld.isoformat(), last[1], prev[1], prior[-1] if prior else None)
 
 
-def eastmoney_csi300():
-    u = ("https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000300&klt=101&fqt=0&beg=20251201&end=20500101"
-         "&fields1=f1,f2,f3&fields2=f51,f52,f53")
-    kl = json.loads(get(u))["data"]["klines"]
-    pts = sorted((dt.date.fromisoformat(k.split(",")[0]), float(k.split(",")[2])) for k in kl)
+def _csi_from_points(source, pts):
+    pts = sorted(pts)
     if len(pts) < 3:
         return None
     today = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=8)).date()
@@ -89,7 +86,50 @@ def eastmoney_csi300():
         pts = pts[:-1]
     last, prev = pts[-1], pts[-2]
     prior = [c for d, c in pts if d.year < last[0].year]
-    return row("CSI 300", "1.000300", "eastmoney", last[0].isoformat(), last[1], prev[1], prior[-1] if prior else None)
+    base = prior[-1] if prior else None
+    if base is None:
+        try:
+            base = json.load(open(os.path.join(HERE, "ytd_baselines.json"), encoding="utf-8-sig"))["closes"].get("CSI 300")
+        except Exception:
+            base = None
+    return row("CSI 300", "1.000300", source, last[0].isoformat(), last[1], prev[1], base)
+
+
+def eastmoney_csi300():
+    hdrs = {"User-Agent": UA, "Referer": "https://quote.eastmoney.com/", "Accept": "application/json,text/plain,*/*"}
+    for host in ("push2his.eastmoney.com", "push2.eastmoney.com"):
+        u = (f"https://{host}/api/qt/stock/kline/get?secid=1.000300&klt=101&fqt=0&beg=20251201&end=20500101"
+             "&fields1=f1,f2,f3&fields2=f51,f52,f53")
+        for i in range(3):
+            try:
+                req = urllib.request.Request(u, headers=hdrs)
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    kl = json.loads(r.read().decode("utf-8-sig"))["data"]["klines"]
+                res = _csi_from_points("eastmoney", [(dt.date.fromisoformat(k.split(",")[0]), float(k.split(",")[2])) for k in kl])
+                if res:
+                    return res
+            except Exception:
+                time.sleep(2 + 2 * i)
+    return None
+
+
+def tencent_csi300():
+    j = json.loads(get("https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh000300,day,2025-12-01,,400,qfq"))
+    d = j["data"]["sh000300"]
+    kl = d.get("day") or d.get("qfqday")
+    return _csi_from_points("tencent", [(dt.date.fromisoformat(k[0]), float(k[2])) for k in kl])
+
+
+def csi300():
+    err = []
+    for fn in (eastmoney_csi300, tencent_csi300):
+        try:
+            r = fn()
+            if r:
+                return r
+        except Exception as e:
+            err.append(f"{fn.__name__}: {e}")
+    raise RuntimeError("; ".join(err) or "no data")
 
 
 def yahoo_snapshot(name, symbol):
@@ -164,7 +204,7 @@ def main():
                 r = None
             (rows.append(r) if r else missing.append(f"{name} ({sym})"))
             time.sleep(5)
-    for label, fn in (("CSI 300 (eastmoney)", eastmoney_csi300),
+    for label, fn in (("CSI 300", csi300),
                       ("Tadawul TASI", lambda: yahoo_snapshot("Tadawul TASI", "^TASI.SR")),
                       ("US Treasury curve", treasury), ("SOFR (NY Fed)", sofr)):
         try:

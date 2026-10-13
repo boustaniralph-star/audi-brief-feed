@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-13 10:11:52 +03:00",
+ "generatedAt": "2026-10-13 10:36:09 +03:00",
  "timezone": "Asia/Riyadh",
  "items": [
   {
@@ -168,17 +168,6 @@
    "partial": false
   },
   {
-   "name": "Tadawul TASI",
-   "symbol": "^TASI.SR",
-   "source": "yahoo-meta",
-   "asOf": "2026-10-12",
-   "close": 10283.96,
-   "chgDay": -0.0,
-   "chgYtd": -1.97,
-   "unit": "pct",
-   "partial": false
-  },
-  {
    "name": "US 2Y yield",
    "symbol": "UST 2 Yr",
    "source": "ustreasury",
@@ -223,5 +212,7 @@
    "partial": false
   }
  ],
- "missing": []
+ "missing": [
+  "Tadawul TASI"
+ ]
 }

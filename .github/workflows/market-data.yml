@@ -24,19 +24,37 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Schedule heartbeat
+        if: github.event_name == 'schedule'
+        env:
+          CRON: ${{ github.event.schedule }}
+        run: |
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) ${{ github.event_name }} cron=\"$CRON\"" >> heartbeat.log
+          tail -n 30 heartbeat.log > heartbeat.tmp && mv heartbeat.tmp heartbeat.log
+          tail -n 1 heartbeat.log
       - name: Fetch market data
+        id: fetch
         env:
           FORCE: ${{ inputs.force && '1' || '' }}
         run: python3 fetch_market_data.py
       - name: Build series.json
+        id: series
         run: python3 make_series.py
       - name: Commit
+        # always() so the heartbeat is recorded even when the fetch fails; market data is only
+        # committed when both data steps succeeded
+        if: always()
         run: |
           git config user.name "market-data-bot"
           git config user.email "market-data-bot@users.noreply.github.com"
-          git add market_data.json series.json market_data/
+          if [ -f heartbeat.log ]; then git add heartbeat.log; fi
+          msg="heartbeat $(date -u +%Y-%m-%d)"
+          if [ "${{ steps.fetch.outcome }}" = success ] && [ "${{ steps.series.outcome }}" = success ]; then
+            git add market_data.json series.json market_data/
+            msg="market data $(date -u +%Y-%m-%d)"
+          fi
           git diff --cached --quiet && { echo "nothing to commit"; exit 0; }
-          git commit -m "market data $(date -u +%Y-%m-%d)"
+          git commit -m "$msg"
           for i in 1 2 3 4 5; do
             git pull --rebase -q && git push && exit 0
             echo "push attempt $i failed; retrying"; sleep $((i * 5))

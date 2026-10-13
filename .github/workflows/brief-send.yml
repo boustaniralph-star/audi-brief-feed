@@ -1,7 +1,13 @@
 name: brief-send
 on:
   schedule:
-    - cron: "*/10 6-7 * * *"      # every 10 minutes, 09:00-10:50 Riyadh
+    # Every 7 minutes from 06:03 to 07:45 UTC (09:03-10:45 Riyadh), off the top of the hour.
+    # Repeat runs are no-ops once sent/<DD.MM.YYYY>-<mode>.json exists.
+    - cron: "3-59/7 6 * * *"
+    - cron: "3-45/7 7 * * *"
+  workflow_run:
+    workflows: [market-data]
+    types: [completed]
   workflow_dispatch: {}
 permissions:
   contents: write
@@ -10,6 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   send:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
       GMAIL_USER: ${{ secrets.GMAIL_USER }}
@@ -20,6 +27,9 @@ jobs:
       BRIEF_MODE: ${{ vars.BRIEF_MODE || 'test' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # after market-data, take the branch tip so its fresh commit is included
+          ref: ${{ github.event_name == 'workflow_run' && github.event.repository.default_branch || '' }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -47,5 +57,12 @@ jobs:
         run: |
           git config user.name "brief-bot"
           git config user.email "brief-bot@users.noreply.github.com"
+          mkdir -p sent
           git add sent/
-          git diff --cached --quiet || (git commit -m "brief status $(date -u +%Y-%m-%d)" && git pull --rebase -q && git push)
+          git diff --cached --quiet && { echo "nothing to record"; exit 0; }
+          git commit -m "brief status $(date -u +%Y-%m-%d)"
+          for i in 1 2 3 4 5; do
+            git pull --rebase -q && git push && exit 0
+            echo "push attempt $i failed; retrying"; sleep $((i * 5))
+          done
+          exit 1

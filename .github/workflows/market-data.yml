@@ -1,8 +1,16 @@
 name: market-data
 on:
   schedule:
-    - cron: "0 5 * * *"      # 08:00 Riyadh, daily (GitHub may start it up to ~30 min late)
-  workflow_dispatch: {}
+    # Off the top of the hour (GitHub delays or drops :00 schedules under load), two slots for redundancy.
+    # 07:17 and 07:47 Riyadh. The second slot is a no-op once market_data.json has today's generatedAt.
+    - cron: "17 4 * * *"
+    - cron: "47 4 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Refetch even if market_data.json is already from today"
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -17,6 +25,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Fetch market data
+        env:
+          FORCE: ${{ inputs.force && '1' || '' }}
         run: python3 fetch_market_data.py
       - name: Build series.json
         run: python3 make_series.py
@@ -25,5 +35,10 @@ jobs:
           git config user.name "market-data-bot"
           git config user.email "market-data-bot@users.noreply.github.com"
           git add market_data.json series.json market_data/
-          git diff --cached --quiet || git commit -m "market data $(date -u +%Y-%m-%d)"
-          git push
+          git diff --cached --quiet && { echo "nothing to commit"; exit 0; }
+          git commit -m "market data $(date -u +%Y-%m-%d)"
+          for i in 1 2 3 4 5; do
+            git pull --rebase -q && git push && exit 0
+            echo "push attempt $i failed; retrying"; sleep $((i * 5))
+          done
+          exit 1

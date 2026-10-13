@@ -5,6 +5,10 @@ on:
     # Repeat runs are no-ops once sent/<DD.MM.YYYY>-<mode>.json exists.
     - cron: "3-59/7 6 * * *"
     - cron: "3-45/7 7 * * *"
+    # Final "no package" alert opportunities (10:52 and 11:15 Riyadh). The alert fires at most once a day:
+    # it is skipped once sent/<DD.MM.YYYY>-alert.json exists.
+    - cron: "52 7 * * *"
+    - cron: "15 8 * * *"
   workflow_run:
     workflows: [market-data]
     types: [completed]

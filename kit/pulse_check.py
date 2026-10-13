@@ -37,7 +37,8 @@ items = {i["name"]: i for i in M["items"]}
 for n, i in items.items():
     try:
         age = (today_d - dt.date.fromisoformat(i["asOf"])).days
-        if age > 4: warn(f"{n}: asOf {i['asOf']} is {age} days old")
+        # rates (SOFR, Treasury yields) publish with a 1-5 day lag at the source; only flag them past 7 days
+        if age > (7 if i.get("unit") == "bps" else 4): warn(f"{n}: asOf {i['asOf']} is {age} days old")
         if i.get("partial"): warn(f"{n}: partial data")
     except Exception: warn(f"{n}: no asOf")
 

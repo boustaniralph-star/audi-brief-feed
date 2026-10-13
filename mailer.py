@@ -21,6 +21,7 @@ OWNER = [a.strip() for a in os.environ.get("RECIPIENTS_TEST", USER).split(",") i
 RECIP = [a.strip() for a in os.environ.get("RECIPIENTS_LIVE" if MODE == "live" else "RECIPIENTS_TEST", "").split(",") if a.strip()] or OWNER
 MARK = os.path.join(HERE, "sent", f"{STAMP}-{MODE}.json")
 ALERT = os.path.join(HERE, "sent", f"{STAMP}-alert.json")
+STALE = os.path.join(HERE, "sent", f"{STAMP}-stale.json")
 
 
 def out(k, v):
@@ -79,14 +80,34 @@ def sections(body):
     return s
 
 
+def stale_feed_watchdog():
+    """From 06:30 UTC, alert once per day if market_data.json is not from today."""
+    utc = NOW.astimezone(dt.timezone.utc)
+    if utc.hour * 60 + utc.minute < 6 * 60 + 30 or os.path.exists(STALE) or not (USER and PW):
+        return
+    try:
+        gen = json.load(open(os.path.join(HERE, "market_data.json"), encoding="utf-8-sig")).get("generatedAt", "")
+    except Exception:
+        gen = ""
+    if gen[:10] == ISO:
+        return
+    alert(f"stale feed {STAMP}", f"market_data.json generatedAt is '{gen or 'unreadable'}', not {ISO}, at 09:30 Riyadh. "
+          "The market-data workflow has not produced today's feed. Run it from the Actions tab.")
+    os.makedirs(os.path.dirname(STALE), exist_ok=True)
+    json.dump({"alert": "stale feed", "generatedAt": gen}, open(STALE, "w")); out("commit", "true")
+    print("stale feed alert sent")
+
+
 def detect():
     if os.path.exists(MARK):
         print("already sent today"); out("found", "false"); return 0
+    stale_feed_watchdog()
     body = find_package() if (USER and PW and TOKEN) else None
     if body is None:
         hr = NOW.astimezone(dt.timezone.utc).hour * 60 + NOW.astimezone(dt.timezone.utc).minute
         if hr >= 7 * 60 + 40 and not os.path.exists(ALERT) and USER and PW:
             alert(f"No brief package received for {STAMP}", "The cloud writer did not deliver today's package by 10:40 Riyadh. The brief was not built or sent by the cloud chain.")
+            os.makedirs(os.path.dirname(ALERT), exist_ok=True)
             json.dump({"alert": "no package"}, open(ALERT, "w")); out("commit", "true")
         print("no package yet"); out("found", "false"); return 0
     os.makedirs(WORK, exist_ok=True)

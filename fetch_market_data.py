@@ -132,24 +132,59 @@ def csi300():
     raise RuntimeError("; ".join(err) or "no data")
 
 
-def yahoo_snapshot(name, symbol):
-    j = json.loads(get("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(symbol, safe="") + "?range=5d&interval=1d"))
-    r = j["chart"]["result"][0]
-    meta = r["meta"]
-    closes = [c for c in r["indicators"]["quote"][0]["close"] if c is not None]
-    last = closes[-1] if closes else meta.get("regularMarketPrice")
-    if last is None:
+def _series_prev(name, before):
+    """Last close in series.json dated before `before` (ISO date), or None."""
+    try:
+        hist = json.load(open(os.path.join(HERE, "series.json"), encoding="utf-8-sig")).get(name, {})
+        older = [d for d in hist if d < before]
+        return float(hist[max(older)]) if older else None
+    except Exception:
         return None
-    prev = meta.get("chartPreviousClose") or meta.get("previousClose") or last
+
+
+def yahoo_snapshot(name, symbol, now=None):
+    # Day change is computed from the bar series (last settled close vs the close before it), never from
+    # meta.previousClose / chartPreviousClose: once the new session is listed those equal the last settled
+    # close, which produced chgDay -0.0 for TASI.
+    now = now or int(time.time())
+    r = None
+    for rng in ("1mo", "5d"):
+        try:
+            r = json.loads(get("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(symbol, safe="") + f"?range={rng}&interval=1d"))["chart"]["result"][0]
+            break
+        except Exception:
+            r = None
+    if not r:
+        return None
+    meta = r["meta"]
     gmt = int(meta.get("gmtoffset") or 0)
-    ts = (r.get("timestamp") or [int(time.time())])[-1]
-    d = dt.datetime.fromtimestamp(ts + gmt, dt.timezone.utc).date()
+    day = lambda t: dt.datetime.fromtimestamp(t + gmt, dt.timezone.utc).date()
+    bars = {}
+    for t, c in zip(r.get("timestamp") or [], r["indicators"]["quote"][0]["close"]):
+        if c is not None:
+            bars[day(int(t))] = float(c)   # one close per exchange date; a later entry for the same date wins
+    pts = sorted(bars.items())
+    exch_today = day(now)
+    session_over = False
+    try:
+        end = int(meta["currentTradingPeriod"]["regular"]["end"])
+        session_over = day(end) == exch_today and now >= end
+    except Exception:
+        pass
+    if pts and pts[-1][0] == exch_today and not session_over:
+        pts = pts[:-1]   # drop the in-progress session
+    if not pts:
+        return None
+    d, last = pts[-1]
+    prev = pts[-2][1] if len(pts) >= 2 else _series_prev(name, d.isoformat())
+    if prev is None:
+        return None
     base = None
     try:
         base = json.load(open(os.path.join(HERE, "ytd_baselines.json"), encoding="utf-8-sig"))["closes"].get(name)
     except Exception:
         pass
-    return row(name, symbol, "yahoo-meta", d.isoformat(), float(last), float(prev), base)
+    return row(name, symbol, "yahoo-meta", d.isoformat(), last, prev, base)
 
 
 def treasury():
@@ -185,7 +220,22 @@ def sofr():
     return row("SOFR", "SOFR", "nyfed", last[0].isoformat(), last[1], prev[1], prior[-1] if prior else pts[0][1], True)
 
 
+MAJOR = {"S&P 500", "Nasdaq Composite", "Dow Jones", "STOXX 600", "DAX", "CAC 40", "FTSE 100", "Nikkei 225",
+         "Hang Seng", "Sensex", "CSI 300", "Tadawul TASI"}
+
+
+def already_today():
+    try:
+        gen = json.load(open(os.path.join(HERE, "market_data.json"), encoding="utf-8-sig")).get("generatedAt", "")
+    except Exception:
+        return False
+    return gen[:10] == dt.datetime.now(RIYADH).strftime("%Y-%m-%d")
+
+
 def main():
+    if already_today() and os.environ.get("FORCE", "").lower() not in ("1", "true", "yes"):
+        print("market_data.json already has generatedAt for today; skipping fetch")
+        return
     rows, missing, pending = [], [], []
     for name, sym in YAHOO:
         try:
@@ -226,6 +276,9 @@ def main():
     for r in rows:
         print(f"{r['name']:<18}{r['asOf']}  {r['close']:>12}  day {r['chgDay']:>7}  ytd {r['chgYtd']}")
     print("MISSING:", missing if missing else "none")
+    for r in rows:
+        if r["name"] in MAJOR and r["chgDay"] == 0:
+            print(f"::warning::{r['name']} shows an exact 0.0 day change (close {r['close']}, asOf {r['asOf']}); check the baseline")
     if len(rows) < 17:
         sys.exit(f"only {len(rows)} of 20 instruments resolved")
 

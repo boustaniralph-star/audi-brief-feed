@@ -147,22 +147,24 @@ def yahoo_snapshot(name, symbol, now=None):
     # meta.previousClose / chartPreviousClose: once the new session is listed those equal the last settled
     # close, which produced chgDay -0.0 for TASI.
     now = now or int(time.time())
-    r = None
-    for rng in ("1mo", "5d"):
+    def chart(rng):
         try:
-            r = json.loads(get("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(symbol, safe="") + f"?range={rng}&interval=1d"))["chart"]["result"][0]
-            break
+            return json.loads(get("https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(symbol, safe="") + f"?range={rng}&interval=1d"))["chart"]["result"][0]
         except Exception:
-            r = None
+            return None
+    r = chart("5d")   # short range: meta carries previousClose
     if not r:
         return None
     meta = r["meta"]
     gmt = int(meta.get("gmtoffset") or 0)
     day = lambda t: dt.datetime.fromtimestamp(t + gmt, dt.timezone.utc).date()
     bars = {}
-    for t, c in zip(r.get("timestamp") or [], r["indicators"]["quote"][0]["close"]):
-        if c is not None:
-            bars[day(int(t))] = float(c)   # one close per exchange date; a later entry for the same date wins
+    for src in ([r] + ([chart("1mo")] if sum(c is not None for c in r["indicators"]["quote"][0].get("close") or []) < 3 else [])):
+        if not src:
+            continue
+        for t, c in zip(src.get("timestamp") or [], src["indicators"]["quote"][0].get("close") or []):
+            if c is not None:
+                bars[day(int(t))] = float(c)   # one close per exchange date; a later entry for the same date wins
     pts = sorted(bars.items())
     exch_today = day(now)
     session_over = False
@@ -171,14 +173,36 @@ def yahoo_snapshot(name, symbol, now=None):
         session_over = day(end) == exch_today and now >= end
     except Exception:
         pass
+    n_raw = len(pts)
     if pts and pts[-1][0] == exch_today and not session_over:
         pts = pts[:-1]   # drop the in-progress session
-    if not pts:
-        return None
-    d, last = pts[-1]
-    prev = pts[-2][1] if len(pts) >= 2 else _series_prev(name, d.isoformat())
-    if prev is None:
-        return None
+    path = "bars"
+    if pts:
+        d, last = pts[-1]
+        prev = pts[-2][1] if len(pts) >= 2 else _series_prev(name, d.isoformat())
+    else:
+        d, last, prev = None, None, None
+    if prev is None and meta.get("previousClose"):
+        # no settled bars: meta.previousClose is the last settled close (the previous Tadawul session),
+        # and the close before that comes from series.json
+        path = "meta.previousClose+series"
+        last = float(meta["previousClose"])
+        d = exch_today - dt.timedelta(days=1)
+        while d.weekday() in (4, 5):   # Tadawul trades Sunday to Thursday
+            d -= dt.timedelta(days=1)
+        prev = _series_prev(name, d.isoformat())
+    if prev is None or last is None or d is None:
+        # last resort: the previous behaviour (live price vs meta previous close); the zero-change check flags it
+        path = "meta-fallback"
+        raw = [c for c in r["indicators"]["quote"][0].get("close") or [] if c is not None]
+        last = float(raw[-1] if raw else meta.get("regularMarketPrice") or 0) or None
+        prev = meta.get("chartPreviousClose") or meta.get("previousClose") or last
+        ts = (r.get("timestamp") or [now])[-1]
+        d = day(int(ts))
+        if last is None:
+            return None
+        prev = float(prev)
+    print(f"{name}: {n_raw} daily bars, {len(pts)} settled, path={path}")
     base = None
     try:
         base = json.load(open(os.path.join(HERE, "ytd_baselines.json"), encoding="utf-8-sig"))["closes"].get(name)

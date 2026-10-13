@@ -182,11 +182,12 @@ def yahoo_snapshot(name, symbol, now=None):
         prev = pts[-2][1] if len(pts) >= 2 else _series_prev(name, d.isoformat())
     else:
         d, last, prev = None, None, None
-    if prev is None and meta.get("previousClose"):
-        # no settled bars: meta.previousClose is the last settled close (the previous Tadawul session),
-        # and the close before that comes from series.json
+    settled_meta = meta.get("previousClose") or (meta.get("chartPreviousClose") if not pts else None)
+    if prev is None and settled_meta:
+        # no settled bars (Yahoo often returns only the live bar for ^TASI.SR): the close before the chart
+        # window is the last settled close (the previous Tadawul session); the close before that comes from series.json
         path = "meta.previousClose+series"
-        last = float(meta["previousClose"])
+        last = float(settled_meta)
         d = exch_today - dt.timedelta(days=1)
         while d.weekday() in (4, 5):   # Tadawul trades Sunday to Thursday
             d -= dt.timedelta(days=1)

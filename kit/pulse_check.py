@@ -165,6 +165,39 @@ if pdf:
         if re.search("[–—]", txtp): fail("PDF text contains an em or en dash")
     except Exception as e: warn(f"pdf check skipped: {e}")
 
+# 8. desktop standards (added 14 Oct 2026): what the desktop editions always had
+try:
+    tk = (C["cotd"].get("ticker") or "").strip()
+    us_listed = bool(re.search(r"\b(NYSE|Nasdaq|NASDAQ)\b", tk)) or bool(re.fullmatch(r"[A-Z][A-Z.]{0,5}", tk))
+    if ht == "none" and us_listed:
+        warn(f"hero is none but {C['cotd'].get('name', 'the COTD')} ({tk}) has a US listing: add a typed hero from official closes (line, drawdown, range or intraday)")
+    for ci, c in enumerate(C["p2"]["cards"]):
+        if not c.get("charts"):
+            warn(f"page 2 card {'AB'[ci] if ci < 2 else ci} has no chart (tiles only): every card needs at least one chart")
+    IDX = ("S&P 500", "Nasdaq", "Dow", "STOXX 600", "Stoxx", "DAX", "CAC 40", "FTSE 100", "Nikkei", "Hang Seng", "CSI 300", "Sensex")
+    for page in ("p1", "p2"):
+        for side in ("left", "right"):
+            for _, bullets in C[page].get(side, []) or []:
+                for lead, text in bullets:
+                    if sum(k in text for k in IDX) >= 2 and "%" in text and "YTD" not in text:
+                        warn(f"'{lead}' quotes index closes without YTD: add YTD from market_data.json chgYtd for each index")
+except Exception as e: warn(f"desktop-standard checks skipped: {e}")
+if pdf:
+    try:
+        bx = subprocess.run(["pdftotext", "-f", "1", "-l", "1", "-bbox", pdf, "-"], capture_output=True, text=True).stdout
+        W, H = map(float, re.search(r'<page width="([\d.]+)" height="([\d.]+)"', bx).groups())
+        ws = [(float(a), float(b), float(c), float(d), w) for a, b, c, d, w in
+              re.findall(r'xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)<', bx)]
+        foot = min(b for a, b, c, d, w in ws if w == "Audi" and b > H * 0.9)
+        body = [t for t in ws if t[3] < foot - 2]
+        short = 0
+        for col, sel in (("left", lambda t: t[2] < W / 2), ("right", lambda t: t[0] > W / 2)):
+            gap = foot - max(t[3] for t in body if sel(t))
+            if gap > 90:
+                short += 1; warn(f"page 1 {col} column ends {gap:.0f} pt above the footer (desktop editions end within about 75 pt): add a hero, a story or a callout")
+        if not short: OK.append("page 1 columns filled")
+    except Exception as e: warn(f"page fill check skipped: {e}")
+
 print("PULSE CHECK")
 for m in OK: print("  ok   ", m)
 for m in WARN: print("  WARN ", m)

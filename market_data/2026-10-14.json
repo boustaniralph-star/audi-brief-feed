@@ -1,0 +1,227 @@
+{
+ "generatedAt": "2026-10-14 10:04:59 +03:00",
+ "timezone": "Asia/Riyadh",
+ "items": [
+  {
+   "name": "S&P 500",
+   "symbol": "^GSPC",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 7805.4502,
+   "chgDay": -0.02,
+   "chgYtd": 14.02,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Nasdaq Composite",
+   "symbol": "^IXIC",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 27204.3809,
+   "chgDay": -0.15,
+   "chgYtd": 17.05,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Dow Jones",
+   "symbol": "^DJI",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 51670.1016,
+   "chgDay": -0.35,
+   "chgYtd": 7.5,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "STOXX 600",
+   "symbol": "^STOXX",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 635.01,
+   "chgDay": -0.1,
+   "chgYtd": 7.12,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "DAX",
+   "symbol": "^GDAXI",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 25259.9004,
+   "chgDay": -0.07,
+   "chgYtd": 3.14,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "CAC 40",
+   "symbol": "^FCHI",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 7827.6299,
+   "chgDay": -0.07,
+   "chgYtd": -3.95,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "FTSE 100",
+   "symbol": "^FTSE",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 10650.2998,
+   "chgDay": -0.06,
+   "chgYtd": 7.24,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Nikkei 225",
+   "symbol": "^N225",
+   "source": "yahoo",
+   "asOf": "2026-10-14",
+   "close": 67744.2891,
+   "chgDay": -0.05,
+   "chgYtd": 34.57,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Hang Seng",
+   "symbol": "^HSI",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 24345.2207,
+   "chgDay": 0.3,
+   "chgYtd": -5.01,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Sensex",
+   "symbol": "^BSESN",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 73033.7812,
+   "chgDay": 1.54,
+   "chgYtd": -14.3,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Brent",
+   "symbol": "BZ=F",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 105.69,
+   "chgDay": -0.9,
+   "chgYtd": 73.69,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "WTI",
+   "symbol": "CL=F",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 94.14,
+   "chgDay": 0.43,
+   "chgYtd": 63.95,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Gold",
+   "symbol": "GC=F",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 4177.2998,
+   "chgDay": -0.32,
+   "chgYtd": -3.77,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Dollar Index",
+   "symbol": "DX-Y.NYB",
+   "source": "yahoo",
+   "asOf": "2026-10-13",
+   "close": 102.18,
+   "chgDay": -0.39,
+   "chgYtd": 3.97,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "CSI 300",
+   "symbol": "1.000300",
+   "source": "eastmoney",
+   "asOf": "2026-10-13",
+   "close": 4275.68,
+   "chgDay": -0.29,
+   "chgYtd": -7.65,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "Tadawul TASI",
+   "symbol": "^TASI.SR",
+   "source": "yahoo-meta",
+   "asOf": "2026-10-13",
+   "close": 10318.1396,
+   "chgDay": 0.33,
+   "chgYtd": -1.64,
+   "unit": "pct",
+   "partial": false
+  },
+  {
+   "name": "US 2Y yield",
+   "symbol": "UST 2 Yr",
+   "source": "ustreasury",
+   "asOf": "2026-10-13",
+   "close": 4.79,
+   "chgDay": -1.0,
+   "chgYtd": 132.0,
+   "unit": "bps",
+   "partial": false
+  },
+  {
+   "name": "US 10Y yield",
+   "symbol": "UST 10 Yr",
+   "source": "ustreasury",
+   "asOf": "2026-10-13",
+   "close": 5.21,
+   "chgDay": -3.0,
+   "chgYtd": 103.0,
+   "unit": "bps",
+   "partial": false
+  },
+  {
+   "name": "US 30Y yield",
+   "symbol": "UST 30 Yr",
+   "source": "ustreasury",
+   "asOf": "2026-10-13",
+   "close": 5.56,
+   "chgDay": -4.0,
+   "chgYtd": 72.0,
+   "unit": "bps",
+   "partial": false
+  },
+  {
+   "name": "SOFR",
+   "symbol": "SOFR",
+   "source": "nyfed",
+   "asOf": "2026-10-09",
+   "close": 3.87,
+   "chgDay": 0.0,
+   "chgYtd": 0.0,
+   "unit": "bps",
+   "partial": false
+  }
+ ],
+ "missing": []
+}

@@ -5,6 +5,11 @@ on:
     # 07:17 and 07:47 Riyadh. The second slot is a no-op once market_data.json has today's generatedAt.
     - cron: "17 4 * * *"
     - cron: "47 4 * * *"
+  # Primary trigger: a Claude routine appends a line to triggers/market-data.txt and pushes (GitHub's cron is hours late
+  # or skipped for this repo). Bot commits never touch triggers/, so nothing loops.
+  push:
+    branches: [main]
+    paths: ["triggers/market-data.txt"]
   workflow_dispatch:
     inputs:
       force:
@@ -25,7 +30,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Schedule heartbeat
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'push'
         env:
           CRON: ${{ github.event.schedule }}
         run: |

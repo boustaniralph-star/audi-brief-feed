@@ -12,6 +12,11 @@ on:
   workflow_run:
     workflows: [market-data]
     types: [completed]
+  # Primary trigger: a Claude routine appends a line to triggers/brief-send.txt and pushes (GitHub's cron is hours late
+  # or skipped for this repo). Bot commits never touch triggers/, so nothing loops.
+  push:
+    branches: [main]
+    paths: ["triggers/brief-send.txt"]
   workflow_dispatch: {}
 permissions:
   contents: write

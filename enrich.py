@@ -147,3 +147,29 @@ def auto_hero(content, md, get, now=None):
     C = copy.deepcopy(content)
     C["cotd"]["chart_title"], C["cotd"]["chart_method"] = title, method
     return hero, C
+
+
+def relayouts(content):
+    """Layouts to try when a hero does not fit: the content as is, then one page-1 section moved to the end of page 2
+    (Emerging Markets first, the desktop placement; then the last section of each page-1 column), to the shorter page-2
+    column first. Each item is (label, content)."""
+    out = [("layout as sent", content)]
+    p1, p2 = content.get("p1", {}), content.get("p2", {})
+    words = lambda col: sum(len(b[1].split()) for s in col for b in s[1])
+    targets = sorted(("left", "right"), key=lambda s: words(p2.get(s, []) or []))
+    cands = []
+    for side in ("left", "right"):
+        for i, s in enumerate(p1.get(side, []) or []):
+            if "EMERGING" in s[0].upper():
+                cands.insert(0, (side, i))
+    for side in ("left", "right"):
+        col = p1.get(side, []) or []
+        if len(col) > 1 and (side, len(col) - 1) not in cands:
+            cands.append((side, len(col) - 1))
+    for side, i in cands:
+        for tgt in targets:
+            C = copy.deepcopy(content)
+            sec = C["p1"][side].pop(i)
+            C["p2"].setdefault(tgt, []).append(sec)
+            out.append((f"{sec[0].title()} moved to page 2 {tgt}", C))
+    return out[:5]

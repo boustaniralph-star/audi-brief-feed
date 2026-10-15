@@ -54,6 +54,9 @@ def hero(h, out="hero.svg"):
         hi_pt = h["high_price"] / rows[0][1] * 100
         hi = max(hi, hi_pt + 4)
     ax.set_ylim(lo, hi)
+    # fixed y ticks kept clear of the top and bottom edge (a label at the limit is clipped by the canvas)
+    edge = (hi - lo) * 0.05
+    ax.set_yticks([t for t in ax.get_yticks() if lo + edge <= t <= hi - edge])
     for i, (n, (c, w)) in enumerate(zip(names, styles), 1):
         rb = rb_all[i - 1]
         ax.plot(xs, rb, color=c, lw=w, zorder=3 if i == 1 else 2)

@@ -140,13 +140,14 @@ def send():
     # the builder's overlap check and fits 2 pages. The last variant is the package exactly as sent.
     variants = []
     try:
-        import enrich, fetch_market_data
+        sys.path.insert(0, os.path.join(HERE, "kit"))
+        import enrich
         c_ytd, t_ytd, n = enrich.ytd(content, txt, md)
         print("enrich: YTD added to", n, "bullet(s)")
         has_hero = bool(hero.get("rows") or hero.get("values") or hero.get("ret") or hero.get("type"))
         if not has_hero:
             try:
-                h_auto, c_auto = enrich.auto_hero(c_ytd, md, fetch_market_data.get)
+                h_auto, c_auto = enrich.auto_hero(c_ytd, md)
             except Exception as e:
                 h_auto = None; print("enrich: auto hero skipped:", type(e).__name__, e)
             if h_auto:

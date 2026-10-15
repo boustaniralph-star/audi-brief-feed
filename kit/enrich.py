@@ -6,7 +6,20 @@ Deterministic, no AI. Used by mailer.py; every step is optional and the caller f
   auto_hero(content, md)     when the writer sent no hero for a listed company, build the classic "line" hero:
                              12 months of weekly closes plus the last daily closes, the company against two benchmarks,
                              rebased to 100 (Yahoo Finance daily closes; settled sessions only)."""
-import copy, datetime as dt, json, re, time, urllib.parse
+import copy, datetime as dt, json, re, sys, time, urllib.parse, urllib.request
+
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+
+
+def get(url, timeout=30, tries=3):
+    last = None
+    for i in range(tries):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"}), timeout=timeout) as r:
+                return r.read().decode("utf-8-sig")
+        except Exception as e:
+            last = e; time.sleep(2 + 3 * i)
+    raise last
 
 ALIAS = [("S&P 500", "S&P 500"), ("Nasdaq Composite", "Nasdaq Composite"), ("Nasdaq", "Nasdaq Composite"),
          ("Dow Jones", "Dow Jones"), ("Dow", "Dow Jones"), ("STOXX 600", "STOXX 600"), ("Stoxx 600", "STOXX 600"),
@@ -99,7 +112,7 @@ def _pick_rows(pts, daily_tail=8):
     return sorted(weekly.values()) + tail
 
 
-def auto_hero(content, md, get, now=None):
+def auto_hero(content, md, get=get, now=None, closes=None):
     """Returns (hero, content) with a line hero and its caption, or (None, None)."""
     cot = content.get("cotd", {})
     res = resolve(cot.get("ticker"))
@@ -107,15 +120,22 @@ def auto_hero(content, md, get, now=None):
         return None, None
     sym, peers = res
     now = now or int(time.time())
-    subj = _settled(get, sym, now)
+    if closes:   # [[date, close], ...] x3 (company, benchmark 1, benchmark 2), e.g. from Robinhood daily historicals
+        load = lambda s: sorted((dt.date.fromisoformat(d[:10]), float(c)) for d, c in s)
+        subj = load(closes[0])
+        series = [dict(load(s)) for s in closes[1:3]]
+        if len(series) < 2 or min(len(s) for s in series) < 120:
+            return None, None
+    else:
+        subj = _settled(get, sym, now)
+        series = []
+        for psym, _ in peers:
+            p = dict(_settled(get, psym, now))
+            if len(p) < 120:
+                return None, None
+            series.append(p)
     if len(subj) < 120:
         return None, None
-    series = []
-    for psym, _ in peers:
-        p = dict(_settled(get, psym, now))
-        if len(p) < 120:
-            return None, None
-        series.append(p)
     rows, last = [], [None] * len(series)
     keys = [sorted(s) for s in series]
     for d, c in _pick_rows(subj):
@@ -173,3 +193,37 @@ def relayouts(content):
             C["p2"].setdefault(tgt, []).append(sec)
             out.append((f"{sec[0].title()} moved to page 2 {tgt}", C))
     return out[:5]
+
+
+USAGE = """Writer usage (run in /tmp/brief before building):
+  python3 enrich.py hero content_v2.json hero_data.json
+      builds the 12-month line hero for the Company of the Day from Yahoo daily closes and writes hero_data.json
+      plus cotd.chart_title / chart_method into content_v2.json (benchmarks: Nasdaq and S&P 500 for US listings,
+      the home index and S&P 500 otherwise). Needs cotd.ticker like "Nasdaq: CRWV", "NYSE: GS", "Tadawul: 2280".
+  python3 enrich.py hero content_v2.json hero_data.json --closes company.json bench1.json bench2.json
+      same, from daily closes you saved yourself (e.g. Robinhood get_equity_historicals, interval day, span year),
+      each file [[\"YYYY-MM-DD\", close], ...]; benchmark names stay Nasdaq / S&P 500 unless you edit them after.
+  python3 enrich.py ytd content_v2.json market_data.json
+      appends ", +x.xx% YTD" to every index close quoted as "<index> <level> (<day %>)"."""
+
+
+def _cli(a):
+    if len(a) >= 3 and a[0] == "hero":
+        C = json.load(open(a[1], encoding="utf-8-sig"))
+        closes = [json.load(open(f, encoding="utf-8-sig")) for f in a[a.index("--closes") + 1:a.index("--closes") + 4]] if "--closes" in a else None
+        h, C2 = auto_hero(C, {}, closes=closes)
+        if not h:
+            print("no hero: ticker not recognized or fewer than 120 daily closes; set cotd.ticker like 'Nasdaq: CRWV' or pass --closes"); return 2
+        json.dump(h, open(a[2], "w", encoding="utf-8"), ensure_ascii=False)
+        json.dump(C2, open(a[1], "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        print("hero:", h["names"], len(h["rows"]), "points |", C2["cotd"]["chart_title"]); return 0
+    if len(a) == 3 and a[0] == "ytd":
+        C = json.load(open(a[1], encoding="utf-8-sig")); md = json.load(open(a[2], encoding="utf-8-sig"))
+        C2, _, n = ytd(C, "", md)
+        json.dump(C2, open(a[1], "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        print("YTD added to", n, "bullet(s)"); return 0
+    print(USAGE); return 1
+
+
+if __name__ == "__main__":
+    sys.exit(_cli(sys.argv[1:]))

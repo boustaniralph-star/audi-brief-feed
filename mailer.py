@@ -20,6 +20,7 @@ TOKEN = os.environ.get("PACKAGE_TOKEN", "")
 OWNER = [a.strip() for a in os.environ.get("RECIPIENTS_TEST", USER).split(",") if a.strip()]
 RECIP = [a.strip() for a in os.environ.get("RECIPIENTS_LIVE" if MODE == "live" else "RECIPIENTS_TEST", "").split(",") if a.strip()] or OWNER
 MARK = os.path.join(HERE, "sent", f"{STAMP}-{MODE}.json")
+DRY = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")   # build and check only: no email, no markers
 ALERT = os.path.join(HERE, "sent", f"{STAMP}-alert.json")
 STALE = os.path.join(HERE, "sent", f"{STAMP}-stale.json")
 
@@ -36,6 +37,8 @@ def smtp_send(msg):
 
 
 def alert(subject, body):
+    if DRY:
+        print("[dry run] alert not sent:", subject); return
     m = EmailMessage(); m["From"] = USER; m["To"] = ", ".join(OWNER)
     m["Subject"] = "[BRIEF ALERT] " + subject; m.set_content(body)
     try:
@@ -99,6 +102,13 @@ def stale_feed_watchdog():
 
 
 def detect():
+    if DRY:
+        body = find_package() if (USER and PW and TOKEN) else None
+        if body is None:
+            print("[dry run] no package for today"); out("found", "false"); return 0
+        os.makedirs(WORK, exist_ok=True)
+        open(os.path.join(WORK, "package.txt"), "w", encoding="utf-8").write(body)
+        out("found", "true"); return 0
     if os.path.exists(MARK):
         print("already sent today"); out("found", "false"); return 0
     stale_feed_watchdog()
@@ -122,15 +132,48 @@ def send():
         shutil.copy(os.path.join(HERE, "kit", f), WORK)
     for f in ("market_data.json", "series.json"):
         shutil.copy(os.path.join(HERE, f), WORK)
-    open(os.path.join(WORK, "content_v2.json"), "w", encoding="utf-8").write(sec["CONTENT"])
-    open(os.path.join(WORK, "hero_data.json"), "w", encoding="utf-8").write(sec["HERO"])
     base = f"Audi Capital Daily Brief - {STAMP}"
     txtp = os.path.join(WORK, base + ".txt"); pdfp = os.path.join(WORK, base + ".pdf")
-    open(txtp, "w", encoding="utf-8").write(sec["TXT"])
-    b = subprocess.run([sys.executable, "build_brief_v2.py", "content_v2.json", "market_data.json", "hero_data.json", base + ".pdf"],
-                       cwd=WORK, capture_output=True, text=True)
-    log = (b.stdout + b.stderr)[-1500:]
-    if b.returncode != 0 or not os.path.exists(pdfp):
+    content, hero, txt = json.loads(sec["CONTENT"]), json.loads(sec["HERO"]), sec["TXT"]
+    md = json.load(open(os.path.join(WORK, "market_data.json"), encoding="utf-8-sig"))
+    # Bring the package up to the desktop standard (enrich.py), then build the richest variant that still passes
+    # the builder's overlap check and fits 2 pages. The last variant is the package exactly as sent.
+    variants = []
+    try:
+        import enrich, fetch_market_data
+        c_ytd, t_ytd, n = enrich.ytd(content, txt, md)
+        print("enrich: YTD added to", n, "bullet(s)")
+        has_hero = bool(hero.get("rows") or hero.get("values") or hero.get("ret") or hero.get("type"))
+        if not has_hero:
+            try:
+                h_auto, c_auto = enrich.auto_hero(c_ytd, md, fetch_market_data.get)
+            except Exception as e:
+                h_auto = None; print("enrich: auto hero skipped:", type(e).__name__, e)
+            if h_auto:
+                print("enrich: auto hero", h_auto["names"], len(h_auto["rows"]), "points")
+                variants.append(("auto hero + YTD", c_auto, h_auto, t_ytd))
+                variants.append(("auto hero (short) + YTD", c_auto, dict(h_auto, height=1.2), t_ytd))
+        if n:
+            variants.append(("YTD", c_ytd, hero, t_ytd))
+    except Exception as e:
+        print("enrich: skipped:", type(e).__name__, e)
+    variants.append(("as sent", content, hero, txt))
+    for label, c, h, t in variants:
+        json.dump(c, open(os.path.join(WORK, "content_v2.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        json.dump(h, open(os.path.join(WORK, "hero_data.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        open(txtp, "w", encoding="utf-8").write(t)
+        if os.path.exists(pdfp):
+            os.remove(pdfp)
+        b = subprocess.run([sys.executable, "build_brief_v2.py", "content_v2.json", "market_data.json", "hero_data.json", base + ".pdf"],
+                           cwd=WORK, capture_output=True, text=True)
+        log = (b.stdout + b.stderr)[-1500:]
+        npg = re.search(r"Pages:\s+(\d+)", subprocess.run(["pdfinfo", pdfp], capture_output=True, text=True).stdout or "") if os.path.exists(pdfp) else None
+        ok = b.returncode == 0 and npg and npg.group(1) == "2"
+        print(f"build [{label}]:", "ok" if ok else f"rejected (exit {b.returncode}, pages {npg.group(1) if npg else '?'})")
+        if ok:
+            sec["TXT"] = t
+            break
+    if not ok:
         alert(f"Build failed for {STAMP}", f"Builder exit {b.returncode}. Nothing was sent.\n\n{log}"); print(log); return 1
     p = subprocess.run([sys.executable, "pulse_check.py", "content_v2.json", "market_data.json", "hero_data.json", base + ".pdf",
                         "--txt", base + ".txt", "--today", ISO], cwd=WORK, capture_output=True, text=True)
@@ -140,6 +183,11 @@ def send():
     pages = re.search(r"Pages:\s+(\d+)", subprocess.run(["pdfinfo", pdfp], capture_output=True, text=True).stdout).group(1)
     lay = hashlib.sha1(subprocess.run(["pdftotext", "-layout", pdfp, "-"], capture_output=True, text=True).stdout.encode()).hexdigest()[:12]
     words = len(sec["TXT"].split()); kb = os.path.getsize(pdfp) // 1024
+    if DRY:
+        os.makedirs(os.path.join(WORK, "out"), exist_ok=True)
+        shutil.copy(pdfp, os.path.join(WORK, "out", base + ".pdf"))
+        print(plog); print("[dry run] built", pages, "pages", kb, "KB; nothing sent, no marker written")
+        return 0
     subject = f"Morning Briefing - {NOW.strftime('%A')}, {NOW.strftime('%d %B %Y')}"
     msg = EmailMessage(); msg["From"] = USER; msg["To"] = ", ".join(RECIP)
     if MODE == "test":

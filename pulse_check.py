@@ -170,17 +170,17 @@ try:
     tk = (C["cotd"].get("ticker") or "").strip()
     us_listed = bool(re.search(r"\b(NYSE|Nasdaq|NASDAQ)\b", tk)) or bool(re.fullmatch(r"[A-Z][A-Z.]{0,5}", tk))
     if ht == "none" and us_listed:
-        warn(f"hero is none but {C['cotd'].get('name', 'the COTD')} ({tk}) has a US listing: add a typed hero from official closes (line, drawdown, range or intraday)")
+        warn(f"DESKTOP STANDARD (fix, do not justify): hero is none but {C['cotd'].get('name', 'the COTD')} ({tk}) has a US listing: build one: python3 enrich.py hero content_v2.json hero_data.json (or a story-driven valuewiped, range, drawdown or intraday hero), then make room on page 1")
     for ci, c in enumerate(C["p2"]["cards"]):
         if not c.get("charts"):
-            warn(f"page 2 card {'AB'[ci] if ci < 2 else ci} has no chart (tiles only): every card needs at least one chart")
+            warn(f"DESKTOP STANDARD (fix, do not justify): page 2 card {'AB'[ci] if ci < 2 else ci} has no chart (tiles only): every card needs at least one chart")
     IDX = ("S&P 500", "Nasdaq", "Dow", "STOXX 600", "Stoxx", "DAX", "CAC 40", "FTSE 100", "Nikkei", "Hang Seng", "CSI 300", "Sensex")
     for page in ("p1", "p2"):
         for side in ("left", "right"):
             for _, bullets in C[page].get(side, []) or []:
                 for lead, text in bullets:
                     if sum(k in text for k in IDX) >= 2 and "%" in text and "YTD" not in text:
-                        warn(f"'{lead}' quotes index closes without YTD: add YTD from market_data.json chgYtd for each index")
+                        warn(f"DESKTOP STANDARD (fix, do not justify): '{lead}' quotes index closes without YTD: run python3 enrich.py ytd content_v2.json market_data.json")
 except Exception as e: warn(f"desktop-standard checks skipped: {e}")
 if pdf:
     try:
@@ -194,7 +194,7 @@ if pdf:
         for col, sel in (("left", lambda t: t[2] < W / 2), ("right", lambda t: t[0] > W / 2)):
             gap = foot - max(t[3] for t in body if sel(t))
             if gap > 90:
-                short += 1; warn(f"page 1 {col} column ends {gap:.0f} pt above the footer (desktop editions end within about 75 pt): add a hero, a story or a callout")
+                short += 1; warn(f"DESKTOP STANDARD (fix, do not justify): page 1 {col} column ends {gap:.0f} pt above the footer (desktop editions end within about 75 pt): add a hero, a story or a callout")
         if not short: OK.append("page 1 columns filled")
     except Exception as e: warn(f"page fill check skipped: {e}")
 

@@ -17,7 +17,12 @@ on:
   push:
     branches: [main]
     paths: ["triggers/brief-send.txt"]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and check today's brief from the package, upload the PDF as an artifact, send nothing"
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -34,6 +39,7 @@ jobs:
       RECIPIENTS_TEST: ${{ secrets.RECIPIENTS_TEST }}
       RECIPIENTS_LIVE: ${{ secrets.RECIPIENTS_LIVE }}
       BRIEF_MODE: ${{ vars.BRIEF_MODE || 'test' }}
+      DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,6 +67,13 @@ jobs:
       - name: Build, check and send
         if: steps.detect.outputs.found == 'true'
         run: python3 mailer.py send
+      - name: Upload dry-run PDF
+        if: inputs.dry_run && steps.detect.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dry-run-brief
+          path: work/out/
+          if-no-files-found: warn
       - name: Record result
         if: always()
         run: |

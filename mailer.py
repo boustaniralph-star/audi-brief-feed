@@ -151,8 +151,9 @@ def send():
                 h_auto = None; print("enrich: auto hero skipped:", type(e).__name__, e)
             if h_auto:
                 print("enrich: auto hero", h_auto["names"], len(h_auto["rows"]), "points")
-                variants.append(("auto hero + YTD", c_auto, h_auto, t_ytd))
-                variants.append(("auto hero (short) + YTD", c_auto, dict(h_auto, height=1.2), t_ytd))
+                for lab, c_lay in enrich.relayouts(c_auto):
+                    variants.append((f"auto hero + YTD, {lab}", c_lay, h_auto, t_ytd))
+                    variants.append((f"auto hero (short) + YTD, {lab}", c_lay, dict(h_auto, height=1.2), t_ytd))
         if n:
             variants.append(("YTD", c_ytd, hero, t_ytd))
     except Exception as e:

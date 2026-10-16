@@ -63,7 +63,8 @@ li b{font-weight:700}
 .bar i{display:block;height:100%;background:var(--navy);border-radius:3pt}
 .bar2{display:flex;align-items:center;gap:1.5mm;margin-top:.9mm}
 .bar2 .b{height:5pt;border-radius:2pt}
-.bar2 .trk{flex:0 0 44%}  /* fixed track: bar length = w% of the same width on every row */
+.bars2{display:grid;grid-template-columns:1fr auto;column-gap:1.5mm;row-gap:.9mm;align-items:center;margin-top:.9mm}
+.bars2 .b{height:5pt;border-radius:2pt}  /* one shared track per panel: bar length = w% of it */
 .fcap{font-size:7pt;color:var(--mute);margin-top:1mm}
 /* 2x2 tiles */
 .rt{display:grid;grid-template-columns:1fr 1fr;gap:2mm;margin-top:1mm}

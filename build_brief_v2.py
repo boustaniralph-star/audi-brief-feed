@@ -221,7 +221,7 @@ def movers(rows, out, w=3.45, h=1.7):
 
 
 # ----------------------------------------------------------------- html helpers
-NUM = re.compile(r'(?<![\w#.])([+-]?\d[\d,]*(?:\.\d+)?(?:%|bps)?)(?![A-Za-z])')
+NUM = re.compile(r'(?<![\w#.])([+-]?\d[\d,]*(?:\.\d+)?(?:%|bps|k)?)(?![A-Za-z\d])')  # whole number incl. a k suffix (no '30' + '0k' splits)
 PROT = re.compile(r'(S&P 500|STOXX 600|CAC 40|FTSE 100|CSI 300|Nikkei 225|Q[1-4]|[0-9]+Y\b)')
 
 
@@ -519,7 +519,7 @@ def main(content_p, md_p, hero_p, out_pdf):
             inner += f'<div class="bar"><i style="width:{p["bar"]}%"></i></div>'
         if p.get("bars"):
             for b in p["bars"]:
-                inner += f'<div class="bar2"><div class="b" style="width:{b["w"]}%;background:{b.get("c", NAVY)}"></div><span class="n" style="font-size:6.8pt;white-space:nowrap">{html.escape(b["t"])}</span></div>'
+                inner += f'<div class="bar2"><div class="trk"><div class="b" style="width:{b["w"]}%;background:{b.get("c", NAVY)}"></div></div><span class="n" style="font-size:6.8pt;white-space:nowrap">{html.escape(b["t"])}</span></div>'
         inner += f'<div class="fcap">{nums(p["caption"])}</div>'
         fis += f'<div class="fbox">{inner}</div>'
     fis = f'<div class="fis">{fis}</div>' if fis else ""

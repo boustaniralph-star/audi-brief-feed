@@ -59,6 +59,53 @@ def ytd(content, txt, md):
     return C, t2, n
 
 
+# ---------------------------------------------------------------- data-provider names
+PROVIDER = re.compile(r"\b(?:Robinhood|IBKR|Interactive Brokers|Yahoo(?: Finance)?)\b", re.I)
+
+
+_PROV = r"(?:Interactive Brokers|Yahoo Finance|Robinhood|IBKR|Yahoo)"
+
+
+def _scrub_s(s):
+    if not isinstance(s, str) or not PROVIDER.search(s):
+        return s
+    s = re.sub(r"\s*\((?:via |from |source:? )?" + _PROV + r"\)", "", s, flags=re.I)              # "(IBKR)"
+    s = re.sub(r"[;,]?\s*(?:via|from|per|according to|source:?)\s+" + _PROV + r"\b", "", s, flags=re.I)  # "from Yahoo"
+    s = re.sub(r"\b" + _PROV + r"(?:'s)?\s+", "", s, flags=re.I)                                    # "Robinhood official"
+    s = re.sub(r"\b" + _PROV + r"\b", "", s, flags=re.I)
+    s = re.sub(r"\s{2,}", " ", s)
+    s = re.sub(r"\s+([,;.)])", r"\1", s).strip(" ;,")
+    return s[:1].upper() + s[1:] if s else s
+
+
+def scrub(content, hero=None):
+    """Remove data-provider names from chart captions, card subtitles, chart notes, tiles and panel captions (not from
+    news text, where a provider can be the story). Returns (content, hero, n_changed)."""
+    C, H, n = copy.deepcopy(content), copy.deepcopy(hero) if hero is not None else None, 0
+    def fix(d, keys):
+        nonlocal n
+        for k in keys:
+            if isinstance(d, dict) and isinstance(d.get(k), str):
+                new = _scrub_s(d[k]); n += new != d[k]; d[k] = new
+    fix(C.get("cotd", {}), ("chart_title", "chart_method"))
+    for card in C.get("p2", {}).get("cards", []) or []:
+        fix(card, ("title", "sub", "tiles_head"))
+        for ch in card.get("charts", []) or []:
+            fix(ch, ("title", "note", "sub"))
+        for t in card.get("tiles", []) or []:
+            fix(t, ("l",))
+    for side in ("extras_left", "extras_right"):
+        for x in C.get("p1", {}).get(side, []) or []:
+            fix(x, ("title", "note"))
+    for pnl in C.get("p2", {}).get("gcc_panels", []) or []:
+        fix(pnl, ("label", "small", "caption"))
+    if isinstance(H, dict):
+        fix(H, ("title", "note", "ratings_note", "close_label"))
+        for k in ("wiped", "ripple", "volx", "eps"):
+            fix(H.get(k), ("title",))
+    return C, H, n
+
+
 # ---------------------------------------------------------------- auto hero
 US = re.compile(r"\b(?:NYSE(?: American)?|Nasdaq|NASDAQ)\s*:\s*([A-Z][A-Z.\-]{0,6})")
 VENUES = [(r"Tadawul\s*:\s*(\d{4})", "{}.SR", "^TASI.SR", "TASI"), (r"Tokyo\s*:\s*(\d{4})", "{}.T", "^N225", "Nikkei"),
@@ -203,6 +250,8 @@ USAGE = """Writer usage (run in /tmp/brief before building):
   python3 enrich.py hero content_v2.json hero_data.json --closes company.json bench1.json bench2.json
       same, from daily closes you saved yourself (e.g. Robinhood get_equity_historicals, interval day, span year),
       each file [[\"YYYY-MM-DD\", close], ...]; benchmark names stay Nasdaq / S&P 500 unless you edit them after.
+  python3 enrich.py scrub content_v2.json hero_data.json
+      removes data-provider names (Robinhood, IBKR, Yahoo) from chart captions, subtitles, notes and panel captions.
   python3 enrich.py ytd content_v2.json market_data.json
       appends ", +x.xx% YTD" to every index close quoted as "<index> <level> (<day %>)"."""
 
@@ -217,6 +266,12 @@ def _cli(a):
         json.dump(h, open(a[2], "w", encoding="utf-8"), ensure_ascii=False)
         json.dump(C2, open(a[1], "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         print("hero:", h["names"], len(h["rows"]), "points |", C2["cotd"]["chart_title"]); return 0
+    if len(a) == 3 and a[0] == "scrub":
+        C = json.load(open(a[1], encoding="utf-8-sig")); H = json.load(open(a[2], encoding="utf-8-sig"))
+        C2, H2, n = scrub(C, H)
+        json.dump(C2, open(a[1], "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        json.dump(H2, open(a[2], "w", encoding="utf-8"), ensure_ascii=False)
+        print("provider names removed from", n, "caption(s)"); return 0
     if len(a) == 3 and a[0] == "ytd":
         C = json.load(open(a[1], encoding="utf-8-sig")); md = json.load(open(a[2], encoding="utf-8-sig"))
         C2, _, n = ytd(C, "", md)

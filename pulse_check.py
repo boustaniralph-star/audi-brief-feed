@@ -181,6 +181,49 @@ try:
                 for lead, text in bullets:
                     if sum(k in text for k in IDX) >= 2 and "%" in text and "YTD" not in text:
                         warn(f"DESKTOP STANDARD (fix, do not justify): '{lead}' quotes index closes without YTD: run python3 enrich.py ytd content_v2.json market_data.json")
+    # data providers are never named in a caption (Ralph, 16.10)
+    meta = [C["cotd"].get("chart_title", ""), C["cotd"].get("chart_method", "")]
+    for card in C["p2"]["cards"]:
+        meta += [card.get("title", ""), card.get("sub", ""), card.get("tiles_head", "")]
+        meta += [ch.get(k, "") for ch in card.get("charts", []) for k in ("title", "note") if isinstance(ch.get(k), str)]
+    meta += [p.get(k, "") for p in C["p2"].get("gcc_panels", []) for k in ("label", "small", "caption")]
+    meta += [v for v in walk(H) if isinstance(v, str)]
+    for m in meta:
+        if re.search(r"\b(Robinhood|IBKR|Interactive Brokers|Yahoo)\b", m, re.I):
+            warn(f"DESKTOP STANDARD (fix, do not justify): caption names a data provider: '{m[:70]}'; say 'official closes' instead (or run python3 enrich.py scrub content_v2.json hero_data.json)")
+    # no stale "as of" dates: every dataset in a caption is from the latest sessions
+    for m in meta:
+        for d, mo, y in re.findall(r"\b(\d{2})[.-](\d{2})[.-](20\d{2})\b", m):
+            try:
+                age = (today_d - dt.date(int(y), int(mo), int(d))).days
+            except ValueError:
+                continue
+            if age > 3 and not re.search(r"(since|from|high|low|peak|IPO|listing|first)\b[^.;]{0,25}" + d + r"[.-]" + mo, m, re.I):
+                warn(f"DESKTOP STANDARD (fix, do not justify): stale data in a caption, '{d}.{mo}.{y}' is {age} days old: refresh it (IBKR or Robinhood) or drop that element: '{m[:60]}'")
+    # GCC panels must read cleanly for a non-specialist
+    mult = {"k": 1e3, "mn": 1e6, "m": 1e6, "bn": 1e9, "tn": 1e12}
+    def qty(t):
+        q = re.search(r"([\d,]*\.?\d+)\s*(k|mn|bn|tn|m)?\b\s*(%|bbl/d|[A-Za-z$/]+)?", t.replace("SAR ", "").replace("USD ", ""))
+        return (float(q.group(1).replace(",", "")) * mult.get((q.group(2) or "").lower(), 1), (q.group(3) or "")) if q else None
+    for pnl in C["p2"].get("gcc_panels", []):
+        lab = pnl.get("label", "")
+        if len(pnl.get("value", "")) + len(pnl.get("small", "")) / 2 > 16:
+            warn(f"DESKTOP STANDARD (fix, do not justify): panel '{lab}': '{pnl.get('value','')} {pnl.get('small','')}' wraps; keep the figure short and the words after it to 2-4 words (e.g. '70%' + 'of the refinery's crude')")
+        for b in pnl.get("bars", []):
+            if len(b.get("t", "")) > 22:
+                warn(f"DESKTOP STANDARD (fix, do not justify): panel '{lab}': bar label '{b['t']}' is too long (max 22 characters) and squeezes the bar"); break
+        if len(pnl.get("value", "")) > 14:
+            warn(f"DESKTOP STANDARD (fix, do not justify): panel '{lab}': headline figure '{pnl['value']}' is too long (max 14 characters): one number and unit")
+        if len(pnl.get("small", "")) > 26:
+            warn(f"DESKTOP STANDARD (fix, do not justify): panel '{lab}': the words after the figure ('{pnl['small']}') are too long (max 26 characters)")
+        bars = [(b.get("w", 0), qty(b.get("t", ""))) for b in pnl.get("bars", [])]
+        vals = [(w, q) for w, q in bars if q]
+        if len(vals) >= 2 and len({q[1] for _, q in vals}) == 1 and max(q[0] for _, q in vals) > 0:
+            top = max(q[0] for _, q in vals)
+            for w, q in vals:
+                if abs(w - q[0] / top * 100) > 10:
+                    warn(f"DESKTOP STANDARD (fix, do not justify): panel '{lab}': bar widths do not match their numbers (width {w} for {q[0]:g} of {top:g}); set w = value / largest x 100")
+                    break
 except Exception as e: warn(f"desktop-standard checks skipped: {e}")
 if pdf:
     try:

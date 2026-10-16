@@ -142,6 +142,8 @@ def send():
     try:
         sys.path.insert(0, os.path.join(HERE, "kit"))
         import enrich
+        content, hero, ns = enrich.scrub(content, hero)
+        print("enrich: provider names removed from", ns, "caption(s)")
         c_ytd, t_ytd, n = enrich.ytd(content, txt, md)
         print("enrich: YTD added to", n, "bullet(s)")
         has_hero = bool(hero.get("rows") or hero.get("values") or hero.get("ret") or hero.get("type"))
@@ -159,7 +161,7 @@ def send():
             variants.append(("YTD", c_ytd, hero, t_ytd))
     except Exception as e:
         print("enrich: skipped:", type(e).__name__, e)
-    variants.append(("as sent", content, hero, txt))
+    variants.append(("as sent (captions scrubbed)", content, hero, txt))
     for label, c, h, t in variants:
         json.dump(c, open(os.path.join(WORK, "content_v2.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         json.dump(h, open(os.path.join(WORK, "hero_data.json"), "w", encoding="utf-8"), ensure_ascii=False)

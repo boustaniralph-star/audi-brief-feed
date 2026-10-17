@@ -79,6 +79,8 @@ def sections(body):
         if not m:
             raise ValueError(f"missing section {name}")
         s[name] = m.group(1).strip("\r\n") + "\n"
+    m = re.search(r"=====\s*LEDGER\s*=====\r?\n(.*?)\r?\n=====", body, re.S)
+    s["LEDGER"] = m.group(1).strip() if m else ""
     json.loads(s["CONTENT"]); json.loads(s["HERO"])
     return s
 
@@ -211,6 +213,13 @@ def send():
     smtp_send(msg)
     json.dump({"mode": MODE, "sentAt": NOW.strftime("%H:%M"), "pages": int(pages), "words": words, "kb": kb, "layout": lay,
                "pulse": plog.splitlines()[-1] if plog else "", "recipients": len(RECIP)}, open(MARK, "w"))
+    # chart-rotation memory: one ledger line per sent edition, kept in the repo so the writer never loses days
+    led = next((l.strip() for l in sec.get("LEDGER", "").splitlines() if re.match(r"\d\d-\d\d-\d{4}:", l.strip())), "")
+    if led:
+        lp = os.path.join(HERE, "sent", "ledger.txt")
+        old_l = open(lp, encoding="utf-8").read().splitlines() if os.path.exists(lp) else []
+        old_l = [l for l in old_l if not l.startswith(led[:10])]
+        open(lp, "w", encoding="utf-8").write("\n".join((old_l + [led])[-30:]) + "\n")
     print("sent", MODE, pages, "pages", kb, "KB", lay)
     return 0
 

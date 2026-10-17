@@ -426,7 +426,7 @@ def _levelchart_svg(x, fname):
         items.append((l["v"], "\n".join(_tw.wrap(l["label"], 18)), l.get("color", DN), False))
     for py, t, c, b in _dodge(ax, items, fig):
         xd = ax.transData.inverted().transform((0, py))
-        xr = n - 0.6
+        xr = n - 1 + max(0.6, n * 0.05)  # clear of the end marker
         ax.text(xr, ax.transData.inverted().transform((0, py))[1], t, fontsize=6.2, color=c, va="center", ha="left",
                 fontweight="bold" if b else "normal", family=MONO if b else None, linespacing=1.05, clip_on=False)
     ax.set_xticks([0, n - 1]); ax.set_xticklabels([x["dates"][0], x["dates"][-1]], fontsize=6.2)

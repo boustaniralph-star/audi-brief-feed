@@ -216,6 +216,19 @@ def auto_hero(content, md, get=get, now=None, closes=None):
     return hero, C
 
 
+def unhooked(content):
+    """Safety net for the hooks: the content without the Number of the day callout, then also without the Today in 3
+    strip, so a page that does not fit with them is still sent rather than lost. Each item is (label, content)."""
+    out = []
+    C = copy.deepcopy(content)
+    for side in ("extras_left", "extras_right"):
+        C.get("p1", {})[side] = [x for x in C.get("p1", {}).get(side, []) or [] if x.get("type") != "numday"]
+    out.append(("without Number of the day", C))
+    C2 = copy.deepcopy(C); C2.pop("top3", None)
+    out.append(("without Number of the day and Today in 3", C2))
+    return out
+
+
 def relayouts(content):
     """Layouts to try when a hero does not fit: the content as is, then one page-1 section moved to the end of page 2
     (Emerging Markets first, the desktop placement; then the last section of each page-1 column), to the shorter page-2

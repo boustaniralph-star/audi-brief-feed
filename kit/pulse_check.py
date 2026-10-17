@@ -225,6 +225,28 @@ try:
                     warn(f"DESKTOP STANDARD (fix, do not justify): panel '{lab}': bar widths do not match their numbers (width {w} for {q[0]:g} of {top:g}); set w = value / largest x 100")
                     break
 except Exception as e: warn(f"desktop-standard checks skipped: {e}")
+# HOOKS (approved by Ralph 17.10.2026, live from 19.10.2026): Today in 3, Gulf line, Number of the day, headline
+# lead-ins, the question in the Watch band
+try:
+    if today_d >= dt.date(2026, 10, 19):
+        H3 = "HOOKS (fix, do not justify): "
+        t3 = C.get("top3") or []
+        if len(t3) != 3: warn(H3 + f"'top3' needs exactly 3 items (has {len(t3)})")
+        for x in t3:
+            if len(x.get("k", "")) > 30: warn(H3 + f"Today in 3 headline '{x.get('k')}' is too long (max 30 characters)")
+            if len(x.get("t", "")) > 110: warn(H3 + f"Today in 3 line under '{x.get('k')}' is too long (max 110 characters)")
+            if not re.search(r"\d", x.get("t", "")): warn(H3 + f"Today in 3 line under '{x.get('k')}' has no figure")
+        if not C.get("cotd", {}).get("means"): warn(H3 + "cotd.means (For Gulf investors line) is missing")
+        nd = [x for side in ("extras_left", "extras_right") for x in C.get("p1", {}).get(side, []) or [] if x.get("type") == "numday"]
+        if len(nd) != 1: warn(H3 + f"page 1 needs exactly one numday callout (has {len(nd)})")
+        elif len(nd[0].get("value", "")) > 12: warn(H3 + f"Number of the day '{nd[0]['value']}' is too long (max 12 characters)")
+        dull = {"close.", "closes.", "friday.", "monday.", "tuesday.", "wednesday.", "thursday.", "saturday.", "sunday.", "week.", "asia.", "rates.", "chips.", "gap.", "india.", "china."}
+        leads = [b[0] for pg in ("p1", "p2") for side in ("left", "right") for s in C.get(pg, {}).get(side, []) or [] for b in s[1]]
+        flat = [l for l in leads if l.strip().lower() in dull or len(l.split()) < 2]
+        if flat: warn(H3 + f"lead-ins must be short headlines that tell the story, not labels: {', '.join(flat[:6])}")
+        w = C.get("watch", {})
+        if not w.get("text", "").rstrip().endswith("?"): warn(H3 + "the Watch band must end with the question ('The question this week' / 'The question today')")
+except Exception as e: warn(f"hook checks skipped: {e}")
 if pdf:
     try:
         bx = subprocess.run(["pdftotext", "-f", "1", "-l", "1", "-bbox", pdf, "-"], capture_output=True, text=True).stdout

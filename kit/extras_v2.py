@@ -362,7 +362,7 @@ def render_extras(lst):
 # ================================================================ round 2 (11 Oct 2026, approved by Ralph)
 # New HTML extras: teaser, storyline, levelchart (Gulf pulse), sectors, topmovers
 import itertools as _it, textwrap as _tw
-HTML_EXTRAS = HTML_EXTRAS + ("teaser", "storyline", "levelchart", "sectors", "topmovers")
+HTML_EXTRAS = HTML_EXTRAS + ("numday", "teaser", "storyline", "levelchart", "sectors", "topmovers")
 EXTRA_CSS += """
 .tm{border-top:.6pt solid #1B2A4A;margin-top:1.6mm;padding-top:1.2mm;font-size:7.5pt;line-height:1.3}
 .tm b{color:#4A6FA5;letter-spacing:.12em;text-transform:uppercase;font-size:6.4pt;margin-right:1.6mm}
@@ -469,6 +469,9 @@ def render_extra(x):
     t = x["type"]; e = html.escape
     _XN[0] += 1
     note = f'<div class="xs">{e(x["note"])}</div>' if x.get("note") else ""
+    if t == "numday":
+        return (f'<div class="nd"><div class="ndk">{e(x.get("label", "Number of the day"))}</div>'
+                f'<div class="ndr"><div class="ndv">{e(x["value"])}</div><div class="ndt">{e(x["text"])}</div></div></div>')
     if t == "teaser":
         return f'<div class="tm"><b>{e(x.get("label", "Tomorrow"))}</b>{e(x["text"])}</div>'
     if t in ("storyline", "levelchart"):

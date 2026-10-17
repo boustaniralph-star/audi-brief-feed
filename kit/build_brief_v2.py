@@ -530,14 +530,22 @@ def main(content_p, md_p, hero_p, out_pdf):
     foot2 = ('<div class="addr"><div><b>Centria Building - 3rd Floor</b> | Tahlia Street - Olaya, Riyadh 12241-6055, '
              'Kingdom of Saudi Arabia</div><div class="url"><a href="https://audicapital.com" '
              'style="color:#fff;text-decoration:none">audicapital.com</a></div></div>')
+    # hooks (optional fields): a three-line "today in 3" strip under the masthead, and a Gulf "what it means" line
+    top3 = ""
+    if C.get("top3"):
+        top3 = '<div class="top3"><div class="t3k">Today in 3</div>' + "".join(
+            f'<div class="t3"><span class="t3n">{i:02d}</span><div><b>{html.escape(x["k"])}</b>{nums(x["t"])}</div></div>'
+            for i, x in enumerate(C["top3"], 1)) + '</div>'
+    means = f'<div class="means"><b>{html.escape(cot.get("means_label", "For Gulf investors"))}</b>{nums(cot["means"])}</div>' if cot.get("means") else ""
     chartblock = (f'<div class="chartcap"><b>{html.escape(cot["chart_title"])}</b><span>{html.escape(cot["chart_method"])}</span></div><img class="ch" src="hero.svg">' if has_hero else '')
     page1 = f'''<div class="page">
  <div class="mast"><div><img class="wm" src="wordmark.png"><div class="kicker">Daily Brief</div><div class="date">{D}</div></div><img class="circ" src="circles.png"></div>
+ {top3}
  <div class="hero"><div class="kicker">Company of the Day</div>
   <h1>{html.escape(cot["name"])} <small>{html.escape(cot["ticker"])}</small></h1>
   <div class="herogrid"><div class="herotext">{nums(cot["body"])}</div><div class="stats">{stats}</div></div>
   {chartblock}
-  <div class="catalyst"><b>Next catalyst</b>{nums(cot["catalyst"])}</div></div>
+  <div class="catalyst"><b>Next catalyst</b>{nums(cot["catalyst"])}</div>{means}</div>
  <div class="cols"><div class="col">{"".join(sec(t, i) for t, i in p1["left"])}{X.render_extras(p1.get("extras_left"))}</div><div class="col">{"".join(sec(t, i) for t, i in p1["right"])}{X.render_extras(p1.get("extras_right"))}</div></div>
  <div class="foot"><div><b>Audi Capital</b> | Daily Brief | {D}</div><div class="pg">01 / 02</div></div></div>'''
     left2 = "".join(sec(t, i, fis if t.startswith("GCC") else "") for t, i in p2["left"])

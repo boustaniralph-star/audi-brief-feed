@@ -162,6 +162,13 @@ def send():
     except Exception as e:
         print("enrich: skipped:", type(e).__name__, e)
     variants.append(("as sent (captions scrubbed)", content, hero, txt))
+    try:
+        if content.get("top3") or any(x.get("type") == "numday" for s_ in ("extras_left", "extras_right")
+                                      for x in content.get("p1", {}).get(s_, []) or []):
+            for lab, c_un in enrich.unhooked(content):
+                variants.append((lab, c_un, hero, txt))
+    except Exception as e:
+        print("enrich: unhooked variants skipped:", type(e).__name__, e)
     for label, c, h, t in variants:
         json.dump(c, open(os.path.join(WORK, "content_v2.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         json.dump(h, open(os.path.join(WORK, "hero_data.json"), "w", encoding="utf-8"), ensure_ascii=False)

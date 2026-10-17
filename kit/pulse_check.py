@@ -257,6 +257,33 @@ try:
         w = C.get("watch", {})
         if not w.get("text", "").rstrip().endswith("?"): warn(H3 + "the Watch band must end with the question ('The question this week' / 'The question today')")
 except Exception as e: warn(f"hook checks skipped: {e}")
+# STORY CHARTS (approved by Ralph 17.10.2026, live from 19.10.2026): takeaway titles, events on the line hero,
+# highlighted bars, names that exist on the chart
+try:
+    if today_d >= dt.date(2026, 10, 19):
+        SC = "STORY CHARTS (fix, do not justify): "
+        BARS = ("index_board", "ytd", "week", "month", "movers")
+        short = {"Nasdaq Composite": "Nasdaq", "Nikkei 225": "Nikkei", "Tadawul TASI": "TASI", "Dow Jones": "Dow"}
+        on_chart = {short.get(i["name"], i["name"]) for i in M["items"]}
+        ct = C.get("cotd", {}).get("chart_title", "")
+        if ct and not re.search(r"\d", ct): warn(SC + f"hero chart title '{ct}' states no figure; make it the takeaway with its number")
+        for ci, c in enumerate(C.get("p2", {}).get("cards", [])):
+            if not re.search(r"\d", c.get("title", "")): warn(SC + f"card {'AB'[ci] if ci < 2 else ci} title '{c.get('title')}' states no figure")
+            for x in c.get("charts", []):
+                if x.get("type") not in BARS: continue
+                hl = x.get("highlight") or []
+                if not 1 <= len(hl) <= 3: warn(SC + f"card {'AB'[ci] if ci < 2 else ci} {x['type']} needs 1-3 highlighted names (the story), has {len(hl)}")
+                names = {r["name"] for r in x.get("rows", [])} if x["type"] == "movers" else on_chart
+                bad = [n for n in hl if n not in names]
+                if bad: warn(SC + f"highlight names not on the {x['type']} chart: {', '.join(bad)} (use the chart's short names: Nasdaq, Nikkei, TASI, Dow)")
+        if (H.get("rows") and not H.get("type")):
+            ev = H.get("events") or []
+            if not 1 <= len(ev) <= 2: warn(SC + f"line hero needs 1-2 events marked on it (has {len(ev)}): {{'date','label'}}")
+            d0, d1 = H["rows"][0][0], H["rows"][-1][0]
+            for e in ev:
+                if not d0 <= e.get("date", "") <= d1: warn(SC + f"hero event '{e.get('label')}' date {e.get('date')} is outside the chart window")
+                if len(e.get("label", "")) > 22: warn(SC + f"hero event label '{e.get('label')}' is too long (max 22 characters)")
+except Exception as e: warn(f"story chart checks skipped: {e}")
 if pdf:
     try:
         bx = subprocess.run(["pdftotext", "-f", "1", "-l", "1", "-bbox", pdf, "-"], capture_output=True, text=True).stdout

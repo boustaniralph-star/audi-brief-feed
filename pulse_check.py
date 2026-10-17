@@ -142,11 +142,21 @@ if ledger:
         L = [l for l in L if not l.startswith(today_d.strftime("%d-%m-%Y"))][-3:]
         cur_hero = ht
         prev = [re.search(r"hero=([a-z_]+)", l) for l in L]
-        if any(p and p.group(1) == cur_hero and cur_hero != "none" for p in prev): warn(f"hero type {cur_hero} was used in the last 3 editions")
-        for ci, c in enumerate(C["p2"]["cards"]):
-            slot = "AB"[ci] if ci < 2 else str(ci)
-            for k, x in enumerate(c["charts"]):
-                pass
+        RS = "ROTATION (fix, do not justify): "
+        if any(p and p.group(1) == cur_hero and cur_hero not in ("none", "line") for p in prev):
+            warn(RS + f"hero type {cur_hero} was used in the last 3 editions; pick another story-driven type or the line hero")
+        # page-2 cards: no chart type in the same slot as in the previous 2 editions, never yesterday's exact combination
+        def slot_types(line, slot):
+            m = re.search(slot + r"=([^;]*)", line)
+            return [re.sub(r"\(.*", "", t).strip() for t in m.group(1).split("+")] if m else []
+        for ci, c in enumerate(C["p2"]["cards"][:2]):
+            slot = "AB"[ci]
+            now = [x["type"] for x in c["charts"]] + (["tiles"] if c.get("tiles") else [])
+            charts_now = [t for t in now if t != "tiles"]
+            recent = [t for l in L[-2:] for t in slot_types(l, slot)]
+            rep = [t for t in charts_now if t in recent]
+            if rep: warn(RS + f"card {slot} repeats {', '.join(rep)} from the last 2 editions; rotate to another type on the menu")
+            if L and sorted(now) == sorted(slot_types(L[-1], slot)): warn(RS + f"card {slot} is the same combination as yesterday")
         ex_now = [x["type"] for _, x in specs()]
         for kind in ("alumni", "levels"):
             if kind in ex_now and L and re.search(kind, L[-1]): warn(f"{kind} was used in the previous edition")

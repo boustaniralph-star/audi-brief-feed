@@ -1,0 +1,10 @@
+07-10-2026: hero=line; A=index_board+ytd; B=rates+tiles; panels=TASI+Brent
+08-10-2026: hero=none; A=heatmap+multiples; B=curve_compare+rates_trend+tiles; panels=Saudi budget deficit+GCC issuance
+09-10-2026: hero=drawdown; A=week+month; B=commodities+rebased; panels=Gulf bourses day+TASI daily change
+10-10-2026: hero=line; A=index_board+multiples; B=curve_compare+tiles; panels=Brent/WTI/gold week+Tadawul turnover
+11-10-2026: hero=none; A=ytd+weekmap; B=rates+levels; panels=Saudi equities YTD+Saudi port cargo; extras=teaser,weekmap,levels; sectors=none
+12-10-2026: hero=none; A=heatmap+storyline(Brent vs USD 100); B=storyline(US 10Y vs 5.364% high); panels=Gulf and Egypt bourses day+Saudi public funds; extras=loop,teaser,storyline; sectors=none
+14-10-2026: hero=none; A=sectors+topmovers-tasi; B=tiles; panels=Saudization by skill+IMF 2026 growth; extras=loop,teaser,topmovers-tasi; sectors=day
+15-10-2026: hero=none; A=index_board+ytd; B=rates+tiles; panels=Saudi M&A 3Q+PIF spending plan; extras=loop,teaser; sectors=none
+16-10-2026: hero=range; A=week+heatmap; B=commodities+tiles; panels=Saudi SME lending+Hapco refinery; extras=loop,teaser; sectors=none
+17-10-2026: hero=line; A=index_board+month; B=commodities+tiles; panels=Brent+US rates; extras=loop,teaser; sectors=none

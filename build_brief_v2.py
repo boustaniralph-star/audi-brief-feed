@@ -19,6 +19,7 @@ import extras_v2 as X
 X.install_overlap_guard()
 NAVY, STEEL, SILVER = "#1B2A4A", "#4A6FA5", "#8A9BB0"
 UP, DN, GRID, MUTE, MONO = "#2F8F6B", "#C0453A", "#E3E8EF", "#6B7A90", "IBM Plex Mono"
+UP_M, DN_M, NAVY_M = "#B9D8CB", "#E8BDB8", "#B4BDCC"  # muted tints: bars that are context, not the story
 plt.rcParams.update({"font.family": "Inter", "font.size": 8, "axes.edgecolor": GRID,
                      "xtick.color": MUTE, "ytick.color": MUTE, "svg.fonttype": "none",
                      "axes.spines.top": False, "axes.spines.right": False})
@@ -28,6 +29,14 @@ def clean(ax):
     for s in ["left", "bottom"]:
         ax.spines[s].set_visible(False)
     ax.tick_params(length=0)
+
+
+def safe_yticks(ax, bottom=.12, top=.06):
+    """Keep y tick labels off the plot's edges: one at the very top is clipped by the canvas, and one at the bottom
+    collides with the first x label in the corner."""
+    lo, hi = ax.get_ylim(); span = hi - lo
+    ax.set_yticks([t for t in ax.get_yticks() if lo + span * bottom <= t <= hi - span * top])
+    ax.set_ylim(lo, hi)
 
 
 def mono_ticks(ax, axis="y"):
@@ -65,6 +74,16 @@ def hero(h, out="hero.svg"):
             ax.plot(xs[-2:], rb[-2:], color=day_color, lw=2.4, zorder=4)
             ax.scatter([xs[-1]], [rb[-1]], s=24, color=day_color, edgecolor="white", linewidth=1, zorder=5)
         ends.append([rb[-1], n, c, i == 1, rb[-1] - 100])
+    # story events on the subject line: a ringed dot and a short label above it (what happened, not just the price)
+    for ev in h.get("events", [])[:3]:
+        d = dt.date.fromisoformat(ev["date"])
+        k = min(range(len(xs)), key=lambda j: abs((xs[j] - d).days))
+        yv = rb_all[0][k]
+        ax.scatter([xs[k]], [yv], s=30, facecolor="white", edgecolor=NAVY, linewidth=1.3, zorder=6)
+        up = ev.get("pos", "above") == "above"
+        ax.annotate(ev["label"], (xs[k], yv), xytext=(0, 14 if up else -14), textcoords="offset points",
+                    ha=ev.get("ha", "center"), va="bottom" if up else "top", fontsize=6.8, color=NAVY, fontweight="bold",
+                    arrowprops=dict(arrowstyle="-", color=NAVY, lw=.6, shrinkA=0, shrinkB=3), zorder=6)
     if hi_pt:
         ax.plot([xs[-1], xs[-1]], [rb_all[0][-1], hi_pt], color=NAVY, lw=.8, ls=(0, (1, 1.5)), zorder=4)
         ax.scatter([xs[-1]], [hi_pt], s=20, facecolor="white", edgecolor=NAVY, linewidth=1, zorder=5)
@@ -102,23 +121,29 @@ INDEX_ORDER = ["S&P 500", "Nasdaq Composite", "Dow Jones", "STOXX 600", "DAX", "
 SHORT = {"Nasdaq Composite": "Nasdaq", "Nikkei 225": "Nikkei", "Tadawul TASI": "TASI", "Dow Jones": "Dow"}
 
 
-def bars(md_items, key, out, w=3.45, h=2.2, day_col=False):
+def bars(md_items, key, out, w=3.45, h=2.2, day_col=False, highlight=None):
     rows = [(SHORT.get(i["name"], i["name"]), i[key], i["chgDay"], i["name"] == "Tadawul TASI")
             for i in md_items if i["name"] in INDEX_ORDER and i.get(key) is not None]
     rows.sort(key=lambda r: r[1])
     h = max(h, 0.15 * len(rows))  # keep row labels from overlapping (min 0.15 in per row)
     fig, ax = plt.subplots(figsize=(w, h), dpi=200)
     ys = range(len(rows))
-    cols = [NAVY if r[3] else (UP if r[1] >= 0 else DN) for r in rows]
+    hl = set(highlight or [])
+    on = lambda r: not hl or r[0] in hl
+    cols = [(NAVY if r[3] else (UP if r[1] >= 0 else DN)) if on(r) else (NAVY_M if r[3] else (UP_M if r[1] >= 0 else DN_M)) for r in rows]
     ax.barh(list(ys), [r[1] for r in rows], color=cols, height=.62, zorder=3)
     ax.set_yticks(list(ys))
     ax.set_yticklabels([r[0] for r in rows], fontsize=7.2, color=NAVY)
+    for t, r in zip(ax.get_yticklabels(), rows):
+        if hl and r[0] in hl: t.set_fontweight("bold")
+        elif hl: t.set_color(MUTE)
     vmax = max(abs(r[1]) for r in rows)
     ax.set_xlim(-vmax * 1.45 if min(r[1] for r in rows) < 0 else 0, vmax * (2.0 if day_col else 1.45))
     for y, r in zip(ys, rows):
         off = vmax * .04
         ax.text(r[1] + (off if r[1] >= 0 else -off), y, f"{r[1]:+.2f}%", va="center",
-                ha="left" if r[1] >= 0 else "right", fontsize=6.6, family=MONO, color=NAVY)
+                ha="left" if r[1] >= 0 else "right", fontsize=6.6, family=MONO, color=NAVY if on(r) else MUTE,
+                fontweight="bold" if hl and r[0] in hl else "normal")
         if day_col:
             ax.text(1.0, y, f"{r[2]:+.2f}%", transform=ax.get_yaxis_transform(), va="center", ha="right",
                     fontsize=6.6, family=MONO, color=UP if r[2] >= 0 else DN)
@@ -143,7 +168,10 @@ def rates_curve(md_items, extra, out, w=3.45, h=1.55):
     ax.plot(x, vals, color=NAVY, lw=1.8, zorder=3)
     ax.scatter(x, vals, s=26, facecolor="white", edgecolor=NAVY, linewidth=1.3, zorder=4)
     for xi, v in zip(x, vals):
-        ax.annotate(f"{v:.2f}%", (xi, v), xytext=(0, 6), textcoords="offset points", ha="center",
+        # the first label goes left of its point: above it, a steep rise to the next point runs through the text
+        first = xi == 0
+        ax.annotate(f"{v:.2f}%", (xi, v), xytext=(-6, 0) if first else (0, 6), textcoords="offset points",
+                    ha="right" if first else "center", va="center" if first else "baseline",
                     fontsize=6.6, family=MONO, color=NAVY)
     for e in extra or []:
         xi = labs.index(e["x"])
@@ -154,12 +182,13 @@ def rates_curve(md_items, extra, out, w=3.45, h=1.55):
     ax.set_xticklabels(labs, fontsize=7.2, color=NAVY)
     lo = min(vals + [e["y"] for e in extra or []]) - .5
     ax.set_ylim(lo, max(vals) + .55)
-    ax.set_xlim(-.4, 3.5)
+    ax.set_xlim(-.9, 3.5)
     ax.yaxis.grid(True, color=GRID, lw=.6)
     ax.set_axisbelow(True)
     from matplotlib.ticker import MultipleLocator, FormatStrFormatter
     ax.yaxis.set_major_locator(MultipleLocator(.5))
     ax.yaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+    safe_yticks(ax, bottom=.05, top=.05)
     clean(ax)
     fig.canvas.draw()
     mono_ticks(ax)
@@ -193,14 +222,15 @@ def commodities(md_items, out, w=3.45, h=1.1):
     plt.close()
 
 
-def movers(rows, out, w=3.45, h=1.7):
+def movers(rows, out, w=3.45, h=1.7, highlight=None):
     """rows: [{"name","close","high"(optional)}] -> diverging bars, ghost bar for the intraday high."""
     rows = sorted(rows, key=lambda r: r["close"])
     fig, ax = plt.subplots(figsize=(w, h), dpi=200)
     ys = list(range(len(rows)))
     vmax = max(max(abs(r["close"]), abs(r.get("high", 0))) for r in rows)
     for y, r in zip(ys, rows):
-        c = UP if r["close"] >= 0 else DN
+        on = not highlight or r["name"] in highlight
+        c = (UP if r["close"] >= 0 else DN) if on else (UP_M if r["close"] >= 0 else DN_M)
         if r.get("high") is not None:
             ax.barh(y, r["high"], color=c, alpha=.18, height=.62, zorder=2)
         ax.barh(y, r["close"], color=c, height=.62, zorder=3)
@@ -209,7 +239,8 @@ def movers(rows, out, w=3.45, h=1.7):
         ax.text(edge + (vmax * .03 if r["close"] >= 0 else -vmax * .03), y, lab, va="center",
                 ha="left" if r["close"] >= 0 else "right", fontsize=6.6, family=MONO, color=NAVY)
         ax.text(-vmax * .03 if r["close"] >= 0 else vmax * .03, y, r["name"], va="center",
-                ha="right" if r["close"] >= 0 else "left", fontsize=7.2, color=NAVY)
+                ha="right" if r["close"] >= 0 else "left", fontsize=7.2, color=NAVY if on else MUTE,
+                fontweight="bold" if highlight and on else "normal")
     ax.set_xlim(-vmax * 1.0, vmax * 2.1)
     ax.axvline(0, color=SILVER, lw=.6, zorder=2)
     ax.set_yticks([])
@@ -331,6 +362,7 @@ def rebased(names, out, w=3.45, h=1.5, days=11):
     ax.set_xlim(-.2, len(xs) + 2.6)
     ax.yaxis.grid(True, color=GRID, lw=.6); ax.set_axisbelow(True); clean(ax)
     mono_ticks(ax); ax.tick_params(axis="y", labelsize=6.6)
+    safe_yticks(ax)
     plt.tight_layout(pad=.2); plt.savefig(out, transparent=True); plt.close()
 
 def heatmap(names, out, w=3.45, h=1.9):
@@ -402,6 +434,7 @@ def rates_trend(out, w=3.45, h=1.55, days=11):
     ax.set_xlim(-.2, len(xs) + 2.4)
     ax.yaxis.grid(True, color=GRID, lw=.6); ax.set_axisbelow(True); clean(ax)
     mono_ticks(ax); ax.tick_params(axis="y", labelsize=6.6)
+    safe_yticks(ax)
     plt.tight_layout(pad=.2); plt.savefig(out, transparent=True); plt.close()
 
 def _add_windows(M):
@@ -467,17 +500,17 @@ def main(content_p, md_p, hero_p, out_pdf):
             if t in X.HTML_EXTRAS:
                 continue
             if t == "index_board":
-                bars(M, "chgDay", fn, h=spec.get("h", 2.15))
+                bars(M, "chgDay", fn, h=spec.get("h", 2.15), highlight=spec.get("highlight"))
             elif t == "ytd":
-                bars(M, "chgYtd", fn, h=spec.get("h", 2.15), day_col=True)
+                bars(M, "chgYtd", fn, h=spec.get("h", 2.15), day_col=True, highlight=spec.get("highlight"))
             elif t == "rates":
                 rates_curve(M, spec.get("extra"), fn, h=spec.get("h", 1.55))
             elif t == "commodities":
                 commodities(M, fn)
             elif t == "week":
-                bars(M, "chg5", fn, h=spec.get("h", 2.15), day_col=True)
+                bars(M, "chg5", fn, h=spec.get("h", 2.15), day_col=True, highlight=spec.get("highlight"))
             elif t == "month":
-                bars(M, "chgM", fn, h=spec.get("h", 2.15), day_col=True)
+                bars(M, "chgM", fn, h=spec.get("h", 2.15), day_col=True, highlight=spec.get("highlight"))
             elif t == "rates_trend":
                 rates_trend(fn, h=spec.get("h", 1.55))
             elif t == "multiples":
@@ -489,7 +522,7 @@ def main(content_p, md_p, hero_p, out_pdf):
             elif t == "curve_compare":
                 curve_compare(fn, h=spec.get("h", 1.55))
             elif t == "movers":
-                movers(spec["rows"], fn, h=spec.get("h", 1.7))
+                movers(spec["rows"], fn, h=spec.get("h", 1.7), highlight=spec.get("highlight"))
             chart_files.append(fn)
 
     def card_html(ci, card):

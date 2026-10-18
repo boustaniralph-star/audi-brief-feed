@@ -8,3 +8,4 @@
 15-10-2026: hero=none; A=index_board+ytd; B=rates+tiles; panels=Saudi M&A 3Q+PIF spending plan; extras=loop,teaser; sectors=none
 16-10-2026: hero=range; A=week+heatmap; B=commodities+tiles; panels=Saudi SME lending+Hapco refinery; extras=loop,teaser; sectors=none
 17-10-2026: hero=line; A=index_board+month; B=commodities+tiles; panels=Brent+US rates; extras=loop,teaser; sectors=none
+18-10-2026: hero=line; A=ytd+multiples; B=rebased+tiles; panels=Saudi oil exports+Gulf equity outflows; extras=teaser; sectors=none

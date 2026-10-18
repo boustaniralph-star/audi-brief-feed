@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-17 08:24:03 +03:00",
+ "generatedAt": "2026-10-18 08:23:59 +03:00",
  "timezone": "Asia/Riyadh",
  "items": [
   {
@@ -128,9 +128,9 @@
    "symbol": "CL=F",
    "source": "yahoo",
    "asOf": "2026-10-16",
-   "close": 101.41,
-   "chgDay": 3.51,
-   "chgYtd": 76.61,
+   "close": 99.02,
+   "chgDay": 1.07,
+   "chgYtd": 72.45,
    "unit": "pct",
    "partial": false
   },

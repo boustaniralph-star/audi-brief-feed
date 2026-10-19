@@ -2,7 +2,7 @@
 """Audi Capital Daily Brief - pulse check (added 11 Oct 2026, approved by Ralph).
 Sanity-checks a brief before it is committed: fresh data, figures consistent with market_data.json,
 extras make sense, rotation rules respected, no banned characters, 2 pages.
-Usage: python3 pulse_check.py content_v2.json market_data.json hero_data.json [brief.pdf] [--ledger FILE] [--txt FILE] [--today YYYY-MM-DD] [--sources FILE]
+Usage: python3 pulse_check.py content_v2.json market_data.json hero_data.json [brief.pdf] [--ledger FILE] [--txt FILE] [--today YYYY-MM-DD] [--sources FILE] [--facts FILE]
 Exit 0 = pass (warnings may print), exit 5 = at least one FAIL. Never edits anything."""
 import json, re, subprocess, sys, datetime as dt
 
@@ -11,7 +11,7 @@ def opt(name, default=None):
     if name in args:
         i = args.index(name); v = args[i + 1]; del args[i:i + 2]; return v
     return default
-ledger = opt("--ledger"); txt = opt("--txt"); today = opt("--today"); sources = opt("--sources")
+ledger = opt("--ledger"); txt = opt("--txt"); today = opt("--today"); sources = opt("--sources"); facts = opt("--facts")
 content, mdata, hero = args[0], args[1], args[2]
 pdf = args[3] if len(args) > 3 else None
 rd = lambda p: json.load(open(p, encoding="utf-8-sig"))
@@ -337,6 +337,26 @@ if sources:
             warn("SOURCES (fix, do not justify): newsletter not read in full: " + " | ".join(x.strip() for x in l.split("|")[1:4])[:110])
         if SL and not unread: OK.append(f"{len(SL)} newsletters read in full")
     except Exception as e: warn(f"sources check skipped: {e}")
+# FACTS: every bullet's key figure was checked outside the newsletters, on its latest version
+if facts:
+    try:
+        NL = ("enterpriseam", "ground news", "history facts", "skimm", "front office", "interesting facts", "business insider",
+              "morning brew", "retail brew", "tech brew", "cfo brew", "brew markets", "investopedia", "sofi", "exec sum",
+              "litquidity", "snacks", "rundown", "newsletter")
+        FL = [[x.strip() for x in l.split("|")] for l in open(facts, encoding="utf-8").read().splitlines() if l.count("|") >= 3]
+        have = {f[0].lower().rstrip(".") for f in FL}
+        leads = [b[0] for pg in ("p1", "p2") for side in ("left", "right") for sec_ in C.get(pg, {}).get(side, []) or [] for b in sec_[1]]
+        leads += [x.get("k", "") for x in C.get("top3", []) or []]
+        miss = [l for l in leads if l and l.lower().rstrip(".") not in have]
+        for l in miss[:6]:
+            warn("FACTS (fix, do not justify): no facts.txt line for '" + l + "': verify its key figure on the latest source and log it")
+        for f in FL:
+            src = f[2].lower()
+            primary = any(k in src for k in ("http", "official", "market_data", "robinhood", "ibkr", "exchange", "filing"))
+            if not src or (any(n in src for n in NL) and not primary):
+                warn("FACTS (fix, do not justify): '" + f[0] + "' is verified only by a newsletter (" + f[2][:40] + "); confirm it on a primary or wire source, an official close or market_data.json")
+        if FL and not miss: OK.append(f"{len(FL)} key figures verified")
+    except Exception as e: warn(f"facts check skipped: {e}")
 if pdf:
     try:
         bx = subprocess.run(["pdftotext", "-f", "1", "-l", "1", "-bbox", pdf, "-"], capture_output=True, text=True).stdout

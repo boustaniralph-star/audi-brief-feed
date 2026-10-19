@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-18 08:23:59 +03:00",
+ "generatedAt": "2026-10-19 08:24:56 +03:00",
  "timezone": "Asia/Riyadh",
  "items": [
   {
@@ -128,9 +128,9 @@
    "symbol": "CL=F",
    "source": "yahoo",
    "asOf": "2026-10-16",
-   "close": 99.02,
-   "chgDay": 1.07,
-   "chgYtd": 72.45,
+   "close": 101.41,
+   "chgDay": 3.51,
+   "chgYtd": 76.61,
    "unit": "pct",
    "partial": false
   },
@@ -171,10 +171,10 @@
    "name": "Tadawul TASI",
    "symbol": "^TASI.SR",
    "source": "yahoo-meta",
-   "asOf": "2026-10-15",
-   "close": 10106.54,
-   "chgDay": -0.32,
-   "chgYtd": -3.66,
+   "asOf": "2026-10-18",
+   "close": 10189.7695,
+   "chgDay": 0.82,
+   "chgYtd": -2.87,
    "unit": "pct",
    "partial": false
   },

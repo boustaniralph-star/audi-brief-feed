@@ -2,7 +2,7 @@
 """Audi Capital Daily Brief - pulse check (added 11 Oct 2026, approved by Ralph).
 Sanity-checks a brief before it is committed: fresh data, figures consistent with market_data.json,
 extras make sense, rotation rules respected, no banned characters, 2 pages.
-Usage: python3 pulse_check.py content_v2.json market_data.json hero_data.json [brief.pdf] [--ledger FILE] [--txt FILE] [--today YYYY-MM-DD]
+Usage: python3 pulse_check.py content_v2.json market_data.json hero_data.json [brief.pdf] [--ledger FILE] [--txt FILE] [--today YYYY-MM-DD] [--sources FILE]
 Exit 0 = pass (warnings may print), exit 5 = at least one FAIL. Never edits anything."""
 import json, re, subprocess, sys, datetime as dt
 
@@ -11,7 +11,7 @@ def opt(name, default=None):
     if name in args:
         i = args.index(name); v = args[i + 1]; del args[i:i + 2]; return v
     return default
-ledger = opt("--ledger"); txt = opt("--txt"); today = opt("--today")
+ledger = opt("--ledger"); txt = opt("--txt"); today = opt("--today"); sources = opt("--sources")
 content, mdata, hero = args[0], args[1], args[2]
 pdf = args[3] if len(args) > 3 else None
 rd = lambda p: json.load(open(p, encoding="utf-8-sig"))
@@ -327,6 +327,16 @@ try:
         if not ok:
             warn(f"THEME (fix, do not justify): today is {THEMES[wd]}; add it (it may repeat a recent chart type, the rotation check allows it)")
 except Exception as e: warn(f"theme check skipped: {e}")
+# SOURCES: every newsletter the Gmail query returned is read in full (GitHub re-checks this against the inbox)
+if sources:
+    try:
+        SL = [l for l in open(sources, encoding="utf-8").read().splitlines() if "|" in l]
+        unread = [l for l in SL if "READ" != l.split("|")[1].strip().upper() and not l.split("|")[1].strip().upper().startswith("SKIP: DUPLICATE")]
+        if not SL: warn("SOURCES (fix, do not justify): sources.txt lists no newsletters; run the newsletters query and read them")
+        for l in unread[:8]:
+            warn("SOURCES (fix, do not justify): newsletter not read in full: " + " | ".join(x.strip() for x in l.split("|")[1:4])[:110])
+        if SL and not unread: OK.append(f"{len(SL)} newsletters read in full")
+    except Exception as e: warn(f"sources check skipped: {e}")
 if pdf:
     try:
         bx = subprocess.run(["pdftotext", "-f", "1", "-l", "1", "-bbox", pdf, "-"], capture_output=True, text=True).stdout

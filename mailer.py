@@ -3,7 +3,7 @@
 Finds today's BRIEF-PACKAGE email (sent by the cloud writer to the owner's own mailbox), rebuilds the PDF with the
 same builder, runs the checks and emails the brief. Modes:  detect | send
 Secrets (env): GMAIL_USER, GMAIL_APP_PASSWORD, PACKAGE_TOKEN, RECIPIENTS_TEST, RECIPIENTS_LIVE.  BRIEF_MODE: test|live."""
-import datetime as dt, email, email.utils, hashlib, imaplib, json, os, re, shutil, smtplib, subprocess, sys
+import datetime as dt, email, email.utils, hashlib, imaplib, json, os, re, shutil, smtplib, subprocess, sys, time
 from email.message import EmailMessage
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -82,6 +82,8 @@ def sections(body):
         s[name] = m.group(1).strip("\r\n") + "\n"
     m = re.search(r"=====\s*LEDGER\s*=====\r?\n(.*?)\r?\n=====", body, re.S)
     s["LEDGER"] = m.group(1).strip() if m else ""
+    m = re.search(r"=====\s*SOURCES\s*=====\r?\n(.*?)\r?\n=====", body, re.S)
+    s["SOURCES"] = m.group(1).strip() if m else ""
     json.loads(s["CONTENT"]); json.loads(s["HERO"])
     return s
 
@@ -102,6 +104,43 @@ def stale_feed_watchdog():
     os.makedirs(os.path.dirname(STALE), exist_ok=True)
     json.dump({"alert": "stale feed", "generatedAt": gen}, open(STALE, "w")); out("commit", "true")
     print("stale feed alert sent")
+
+
+def newsletter_coverage(sources):
+    """Check the writer's reading against the inbox: every newsletter (kit/newsletters.txt) that arrived in the 24
+    hours before the package was sent, versus the thread ids the package marks READ. Returns (read, arrived, missed
+    names) or None when the inbox cannot be read."""
+    try:
+        sys.path.insert(0, os.path.join(HERE, "kit"))
+        import enrich
+        senders = enrich.newsletters()
+        names = {a.lower(): n for n, a in senders}
+        M = imaplib.IMAP4_SSL("imap.gmail.com"); M.login(USER, PW); M.select('"[Gmail]/All Mail"')
+        typ, d = M.search(None, "X-GM-RAW", f'"subject:BRIEF-PACKAGE {STAMP} from:{USER}"')
+        pk = d[0].split() if typ == "OK" else []
+        if not pk:
+            M.logout(); return None
+        typ, dd = M.fetch(pk[-1], "(INTERNALDATE)")
+        sent_at = imaplib.Internaldate2tuple(dd[0])
+        sent_ts = time.mktime(sent_at)
+        typ, d = M.search(None, "X-GM-RAW", '"' + enrich.newsletter_query(days=2) + '"')
+        arrived = {}
+        for i in (d[0].split() if typ == "OK" else []):
+            typ, f = M.fetch(i, "(X-GM-THRID INTERNALDATE BODY.PEEK[HEADER.FIELDS (FROM)])")
+            head = f[0][0].decode() if isinstance(f[0], tuple) else ""
+            ts = time.mktime(imaplib.Internaldate2tuple(f[0][0]))
+            if not sent_ts - 24 * 3600 <= ts <= sent_ts:
+                continue
+            thr = format(int(re.search(r"X-GM-THRID (\d+)", head).group(1)), "x")
+            frm = email.utils.parseaddr(email.message_from_bytes(f[0][1]).get("From", ""))[1].lower()
+            arrived[thr] = names.get(frm, frm)
+        M.logout()
+        read = {l.split("|")[0].strip().lower() for l in sources.splitlines() if "|" in l and "READ" in l.split("|")[1].upper()}
+        missed = sorted({arrived[t] for t in arrived if t not in read})
+        return len([t for t in arrived if t in read]), len(arrived), missed
+    except Exception as e:
+        print("newsletter check skipped:", type(e).__name__, e)
+        return None
 
 
 def detect():
@@ -197,6 +236,14 @@ def send():
     pages = re.search(r"Pages:\s+(\d+)", subprocess.run(["pdfinfo", pdfp], capture_output=True, text=True).stdout).group(1)
     lay = hashlib.sha1(subprocess.run(["pdftotext", "-layout", pdfp, "-"], capture_output=True, text=True).stdout.encode()).hexdigest()[:12]
     words = len(sec["TXT"].split()); kb = os.path.getsize(pdfp) // 1024
+    cov = newsletter_coverage(sec.get("SOURCES", "")) if (USER and PW) else None
+    covline = (f"newsletters read {cov[0]} of {cov[1]} that arrived in the 24 hours before the package"
+               + (f" (not read: {', '.join(cov[2])})" if cov[2] else "")) if cov else "newsletters: not checked"
+    print(covline)
+    if cov and cov[1] and cov[0] < 0.8 * cov[1] and not DRY:
+        alert(f"Writer read {cov[0]} of {cov[1]} newsletters on {STAMP}",
+              f"The cloud writer's package lists {cov[0]} of the {cov[1]} newsletters that arrived in the 24 hours before it "
+              f"was sent. Not read: {', '.join(cov[2]) or 'none'}. The brief was still sent.")
     if DRY:
         os.makedirs(os.path.join(WORK, "out"), exist_ok=True)
         shutil.copy(pdfp, os.path.join(WORK, "out", base + ".pdf"))
@@ -206,14 +253,15 @@ def send():
     msg = EmailMessage(); msg["From"] = USER; msg["To"] = ", ".join(RECIP)
     if MODE == "test":
         msg["Subject"] = "[CLOUD TEST] " + subject
-        foot = f"\n\n--- cloud build check ---\npages {pages} | words {words} | pdf {kb} KB | layout {lay}\n{plog.splitlines()[-1] if plog else ''}\n"
+        foot = f"\n\n--- cloud build check ---\npages {pages} | words {words} | pdf {kb} KB | layout {lay}\n{plog.splitlines()[-1] if plog else ''}\n{covline}\n"
         msg.set_content(sec["TXT"] + foot)
     else:
         msg["Subject"] = subject; msg.set_content(sec["TXT"])
     msg.add_attachment(open(pdfp, "rb").read(), maintype="application", subtype="pdf", filename=base + ".pdf")
     smtp_send(msg)
     json.dump({"mode": MODE, "sentAt": NOW.strftime("%H:%M"), "pages": int(pages), "words": words, "kb": kb, "layout": lay,
-               "pulse": plog.splitlines()[-1] if plog else "", "recipients": len(RECIP)}, open(MARK, "w"))
+               "pulse": plog.splitlines()[-1] if plog else "", "recipients": len(RECIP),
+               "newsletters": {"read": cov[0], "arrived": cov[1], "not_read": cov[2]} if cov else None}, open(MARK, "w"))
     # chart-rotation memory: one ledger line per sent edition, kept in the repo so the writer never loses days
     led = next((l.strip() for l in sec.get("LEDGER", "").splitlines() if re.match(r"\d\d-\d\d-\d{4}:", l.strip())), "")
     if led:

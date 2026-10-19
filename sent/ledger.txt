@@ -9,3 +9,4 @@
 16-10-2026: hero=range; A=week+heatmap; B=commodities+tiles; panels=Saudi SME lending+Hapco refinery; extras=loop,teaser; sectors=none
 17-10-2026: hero=line; A=index_board+month; B=commodities+tiles; panels=Brent+US rates; extras=loop,teaser; sectors=none
 18-10-2026: hero=line; A=ytd+multiples; B=rebased+tiles; panels=Saudi oil exports+Gulf equity outflows; extras=teaser; sectors=none
+19-10-2026: hero=line; A=movers+week; B=storyline+rates_trend; panels=Saudi farm group profit+IMF Saudi growth; extras=numday,teaser,storyline; sectors=none

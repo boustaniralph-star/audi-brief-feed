@@ -17,7 +17,8 @@ MODE = MODE if MODE in ("test", "live") else "test"
 USER = os.environ.get("GMAIL_USER", "")
 PW = os.environ.get("GMAIL_APP_PASSWORD", "")
 TOKEN = os.environ.get("PACKAGE_TOKEN", "")
-OWNER = [a.strip() for a in os.environ.get("RECIPIENTS_TEST", USER).split(",") if a.strip()]
+# pipeline alerts go to the owner's own mailbox only, never to the brief's other recipients
+OWNER = [USER] if USER else [a.strip() for a in os.environ.get("RECIPIENTS_TEST", "").split(",") if a.strip()][:1]
 RECIP = [a.strip() for a in os.environ.get("RECIPIENTS_LIVE" if MODE == "live" else "RECIPIENTS_TEST", "").split(",") if a.strip()] or OWNER
 MARK = os.path.join(HERE, "sent", f"{STAMP}-{MODE}.json")
 DRY = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")   # build and check only: no email, no markers

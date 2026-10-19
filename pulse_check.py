@@ -143,6 +143,8 @@ if ledger:
         cur_hero = ht
         prev = [re.search(r"hero=([a-z_]+)", l) for l in L]
         RS = "ROTATION (fix, do not justify): "
+        if cur_hero == "line" and len(prev) >= 2 and all(p and p.group(1) == "line" for p in prev[-2:]):
+            warn(RS + "third line hero in a row; pick a story-driven hero (drawdown, valuewiped, range, intraday, guidance)")
         if any(p and p.group(1) == cur_hero and cur_hero not in ("none", "line") for p in prev):
             warn(RS + f"hero type {cur_hero} was used in the last 3 editions; pick another story-driven type or the line hero")
         # page-2 cards: no chart type in the same slot as in the previous 2 editions, never yesterday's exact combination
@@ -213,6 +215,7 @@ try:
     # GCC panels must read cleanly for a non-specialist
     mult = {"k": 1e3, "mn": 1e6, "m": 1e6, "bn": 1e9, "tn": 1e12}
     def qty(t):
+        t = re.sub(r"\b(19|20)\d\d\s*:\s*", "", t)  # a year label ("2026: -3.3%") is not the quantity
         q = re.search(r"([\d,]*\.?\d+)\s*(k|mn|bn|tn|m)?\b\s*(%|bbl/d|[A-Za-z$/]+)?", t.replace("SAR ", "").replace("USD ", ""))
         return (float(q.group(1).replace(",", "")) * mult.get((q.group(2) or "").lower(), 1), (q.group(3) or "")) if q else None
     for pnl in C["p2"].get("gcc_panels", []):
@@ -284,6 +287,22 @@ try:
                 if not d0 <= e.get("date", "") <= d1: warn(SC + f"hero event '{e.get('label')}' date {e.get('date')} is outside the chart window")
                 if len(e.get("label", "")) > 22: warn(SC + f"hero event label '{e.get('label')}' is too long (max 22 characters)")
 except Exception as e: warn(f"story chart checks skipped: {e}")
+# panels: a fall, loss or negative figure must be drawn as one (neg: true), whatever the date
+try:
+    NEGW = re.compile(r"(?<![\w.])-\s?\d|\b(fall|fell|falls|drop|decline|shrink|contract|contraction|loss|deficit|down)\b", re.I)
+    for pnl in C.get("p2", {}).get("gcc_panels", []) or []:
+        for b_ in pnl.get("bars", []) or []:
+            if NEGW.search(b_.get("t", "")) and not b_.get("neg"):
+                warn("STORY CHARTS (fix, do not justify): panel '" + pnl.get("label", "") + "': bar '" + b_.get("t", "") + "' is a fall or a negative value drawn as a rise; set \"neg\": true and show the sign (\"2026: -3.3%\")")
+except Exception as e: warn(f"panel sign check skipped: {e}")
+# Monday: the week-ahead map is the Monday theme and is required
+try:
+    if today_d >= dt.date(2026, 10, 19) and today_d.weekday() == 0:
+        allx = [x.get("type") for side in ("extras_left", "extras_right") for x in C.get("p1", {}).get(side, []) or []] + \
+               [x.get("type") for c in C.get("p2", {}).get("cards", []) for x in c.get("charts", [])]
+        if "weekmap" not in allx:
+            warn("HOOKS (fix, do not justify): Monday edition needs the week-ahead map (weekmap), as card A's second chart or a page-1 callout")
+except Exception as e: warn(f"weekmap check skipped: {e}")
 if pdf:
     try:
         bx = subprocess.run(["pdftotext", "-f", "1", "-l", "1", "-bbox", pdf, "-"], capture_output=True, text=True).stdout

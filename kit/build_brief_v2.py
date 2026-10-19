@@ -553,9 +553,14 @@ def main(content_p, md_p, hero_p, out_pdf):
         if p.get("bars"):
             # a two-column grid per panel: the label column is as wide as the longest label, the bar track takes the
             # rest and is the same for every row, so each bar's length is w% of one track and matches its number
+            if any(b.get("neg") for b in p["bars"]):
+                # a value below zero grows left from a center line, in red, so a fall never reads as a rise
+                trk = lambda b: (f'<div class="trk dv"><div class="h l">' + (f'<div class="b" style="width:{b["w"]}%;background:{b.get("c", DN)}"></div>' if b.get("neg") else "") +
+                                 f'</div><div class="h r">' + ("" if b.get("neg") else f'<div class="b" style="width:{b["w"]}%;background:{b.get("c", NAVY)}"></div>') + '</div></div>')
+            else:
+                trk = lambda b: f'<div class="trk"><div class="b" style="width:{b["w"]}%;background:{b.get("c", NAVY)}"></div></div>'
             inner += '<div class="bars2">' + "".join(
-                f'<div class="trk"><div class="b" style="width:{b["w"]}%;background:{b.get("c", NAVY)}"></div></div>'
-                f'<span class="n" style="font-size:6.8pt;white-space:nowrap">{html.escape(b["t"])}</span>' for b in p["bars"]) + '</div>'
+                trk(b) + f'<span class="n" style="font-size:6.8pt;white-space:nowrap">{html.escape(b["t"])}</span>' for b in p["bars"]) + '</div>'
         inner += f'<div class="fcap">{nums(p["caption"])}</div>'
         fis += f'<div class="fbox">{inner}</div>'
     fis = f'<div class="fis">{fis}</div>' if fis else ""

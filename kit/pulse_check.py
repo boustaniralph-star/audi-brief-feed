@@ -135,6 +135,16 @@ if ht == "valuewiped" and "value" not in ct: warn("hero chart_title does not men
 if ht == "range" and "range" not in ct and "52" not in ct: warn("hero chart_title does not mention the range for a range hero")
 if ht == "intraday" and not any(k in ct for k in ("session", "intraday", "gap", "open", "minute")): warn("hero chart_title does not describe the session for an intraday hero")
 
+# THEME DAYS (promised to Ralph; enforced from 20.10.2026, Monday's map from 19.10): each weekday has its chart
+THEMES = {0: "Monday: week-ahead map (weekmap)", 1: "Tuesday: earnings scorecard (movers or topmovers)",
+          2: "Wednesday: rates day (rates or rates_trend in card B)", 3: "Thursday: Gulf deep dive (a TASI or Gulf-bourse chart)",
+          4: "Friday: weekly scorecard (a scorecard chart: week bars with a YTD column, in card A)", 5: "Saturday: where are they now (alumni) and month bars",
+          6: "Sunday: ytd bars"}
+def theme_types():
+    """chart types today's theme requires; the rotation check lets these repeat"""
+    return {0: {"weekmap"}, 1: {"movers", "topmovers"}, 2: {"rates", "rates_trend"}, 3: set(),
+            4: {"scorecard", "week", "ytd"}, 5: {"alumni", "month"}, 6: {"ytd"}}[today_d.weekday()]
+
 # 6. rotation ledger
 if ledger:
     try:
@@ -156,9 +166,10 @@ if ledger:
             now = [x["type"] for x in c["charts"]] + (["tiles"] if c.get("tiles") else [])
             charts_now = [t for t in now if t != "tiles"]
             recent = [t for l in L[-2:] for t in slot_types(l, slot)]
-            rep = [t for t in charts_now if t in recent]
+            rep = [t for t in charts_now if t in recent and t not in theme_types()]
             if rep: warn(RS + f"card {slot} repeats {', '.join(rep)} from the last 2 editions; rotate to another type on the menu")
-            if L and sorted(now) == sorted(slot_types(L[-1], slot)): warn(RS + f"card {slot} is the same combination as yesterday")
+            if L and sorted(now) == sorted(slot_types(L[-1], slot)) and not set(charts_now) <= theme_types():
+                warn(RS + f"card {slot} is the same combination as yesterday")
         ex_now = [x["type"] for _, x in specs()]
         for kind in ("alumni", "levels"):
             if kind in ex_now and L and re.search(kind, L[-1]): warn(f"{kind} was used in the previous edition")
@@ -265,7 +276,7 @@ except Exception as e: warn(f"hook checks skipped: {e}")
 try:
     if today_d >= dt.date(2026, 10, 19):
         SC = "STORY CHARTS (fix, do not justify): "
-        BARS = ("index_board", "ytd", "week", "month", "movers")
+        BARS = ("index_board", "ytd", "week", "month", "movers", "scorecard")
         short = {"Nasdaq Composite": "Nasdaq", "Nikkei 225": "Nikkei", "Tadawul TASI": "TASI", "Dow Jones": "Dow"}
         on_chart = {short.get(i["name"], i["name"]) for i in M["items"]}
         ct = C.get("cotd", {}).get("chart_title", "")
@@ -295,14 +306,27 @@ try:
             if NEGW.search(b_.get("t", "")) and not b_.get("neg"):
                 warn("STORY CHARTS (fix, do not justify): panel '" + pnl.get("label", "") + "': bar '" + b_.get("t", "") + "' is a fall or a negative value drawn as a rise; set \"neg\": true and show the sign (\"2026: -3.3%\")")
 except Exception as e: warn(f"panel sign check skipped: {e}")
-# Monday: the week-ahead map is the Monday theme and is required
+# THEME DAYS: the check runs below; the definitions sit here so the rotation check can use them
 try:
-    if today_d >= dt.date(2026, 10, 19) and today_d.weekday() == 0:
-        allx = [x.get("type") for side in ("extras_left", "extras_right") for x in C.get("p1", {}).get(side, []) or []] + \
-               [x.get("type") for c in C.get("p2", {}).get("cards", []) for x in c.get("charts", [])]
-        if "weekmap" not in allx:
-            warn("HOOKS (fix, do not justify): Monday edition needs the week-ahead map (weekmap), as card A's second chart or a page-1 callout")
-except Exception as e: warn(f"weekmap check skipped: {e}")
+    wd = today_d.weekday()
+    if today_d >= dt.date(2026, 10, 20) or (wd == 0 and today_d >= dt.date(2026, 10, 19)):
+        cards = C.get("p2", {}).get("cards", [])
+        cardA = [x.get("type") for x in (cards[0].get("charts", []) if cards else [])]
+        cardB = [x.get("type") for x in (cards[1].get("charts", []) if len(cards) > 1 else [])]
+        ext = [x for side in ("extras_left", "extras_right") for x in C.get("p1", {}).get(side, []) or []]
+        allc = [x for c in cards for x in c.get("charts", [])] + ext
+        types = [x.get("type") for x in allc]
+        ok = {0: "weekmap" in types,
+              1: any(t in types for t in ("movers", "topmovers")),
+              2: any(t in cardB for t in ("rates", "rates_trend")),
+              3: any(("TASI" in (x.get("highlight") or [])) or "TASI" in (x.get("name", "") + x.get("title", "")) or
+                     (x.get("type") == "heatmap" and "Tadawul TASI" in x.get("names", [])) for x in allc),
+              4: "scorecard" in cardA or ("week" in cardA and "ytd" in cardA),
+              5: "alumni" in types and "month" in types,
+              6: "ytd" in types}[wd]
+        if not ok:
+            warn(f"THEME (fix, do not justify): today is {THEMES[wd]}; add it (it may repeat a recent chart type, the rotation check allows it)")
+except Exception as e: warn(f"theme check skipped: {e}")
 if pdf:
     try:
         bx = subprocess.run(["pdftotext", "-f", "1", "-l", "1", "-bbox", pdf, "-"], capture_output=True, text=True).stdout

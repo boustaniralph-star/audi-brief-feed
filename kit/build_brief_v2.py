@@ -121,8 +121,8 @@ INDEX_ORDER = ["S&P 500", "Nasdaq Composite", "Dow Jones", "STOXX 600", "DAX", "
 SHORT = {"Nasdaq Composite": "Nasdaq", "Nikkei 225": "Nikkei", "Tadawul TASI": "TASI", "Dow Jones": "Dow"}
 
 
-def bars(md_items, key, out, w=3.45, h=2.2, day_col=False, highlight=None):
-    rows = [(SHORT.get(i["name"], i["name"]), i[key], i["chgDay"], i["name"] == "Tadawul TASI")
+def bars(md_items, key, out, w=3.45, h=2.2, day_col=False, highlight=None, col_key="chgDay", col_label="DAY"):
+    rows = [(SHORT.get(i["name"], i["name"]), i[key], i.get(col_key) if i.get(col_key) is not None else 0.0, i["name"] == "Tadawul TASI")
             for i in md_items if i["name"] in INDEX_ORDER and i.get(key) is not None]
     rows.sort(key=lambda r: r[1])
     h = max(h, 0.15 * len(rows))  # keep row labels from overlapping (min 0.15 in per row)
@@ -148,7 +148,7 @@ def bars(md_items, key, out, w=3.45, h=2.2, day_col=False, highlight=None):
             ax.text(1.0, y, f"{r[2]:+.2f}%", transform=ax.get_yaxis_transform(), va="center", ha="right",
                     fontsize=6.6, family=MONO, color=UP if r[2] >= 0 else DN)
     if day_col:
-        ax.text(1.0, len(rows) - .35, "DAY", transform=ax.get_yaxis_transform(), ha="right", fontsize=6,
+        ax.text(1.0, len(rows) - .35, col_label, transform=ax.get_yaxis_transform(), ha="right", fontsize=6,
                 color=MUTE, family=MONO)
     ax.axvline(0, color=SILVER, lw=.6, zorder=2)
     ax.set_xticks([])
@@ -509,6 +509,8 @@ def main(content_p, md_p, hero_p, out_pdf):
                 commodities(M, fn)
             elif t == "week":
                 bars(M, "chg5", fn, h=spec.get("h", 2.15), day_col=True, highlight=spec.get("highlight"))
+            elif t == "scorecard":  # Friday weekly scorecard: week bars with a YTD column
+                bars(M, "chg5", fn, h=spec.get("h", 2.15), day_col=True, highlight=spec.get("highlight"), col_key="chgYtd", col_label="YTD")
             elif t == "month":
                 bars(M, "chgM", fn, h=spec.get("h", 2.15), day_col=True, highlight=spec.get("highlight"))
             elif t == "rates_trend":

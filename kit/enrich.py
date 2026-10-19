@@ -6,7 +6,7 @@ Deterministic, no AI. Used by mailer.py; every step is optional and the caller f
   auto_hero(content, md)     when the writer sent no hero for a listed company, build the classic "line" hero:
                              12 months of weekly closes plus the last daily closes, the company against two benchmarks,
                              rebased to 100 (Yahoo Finance daily closes; settled sessions only)."""
-import copy, datetime as dt, json, re, sys, time, urllib.parse, urllib.request
+import copy, datetime as dt, json, os, re, sys, time, urllib.parse, urllib.request
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
@@ -290,8 +290,26 @@ def _cli(a):
         C2, _, n = ytd(C, "", md)
         json.dump(C2, open(a[1], "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         print("YTD added to", n, "bullet(s)"); return 0
+    if a and a[0] == "newsletters":
+        print(newsletter_query()); return 0
     print(USAGE); return 1
 
+
+def newsletters(path=None):
+    """[(name, address)] from newsletters.txt next to this file (or path)."""
+    path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "newsletters.txt")
+    out = []
+    for l in open(path, encoding="utf-8"):
+        l = l.strip()
+        if l and not l.startswith("#") and "|" in l:
+            n, a = [x.strip() for x in l.split("|", 1)]
+            out.append((n, a))
+    return out
+
+
+def newsletter_query(days=1, path=None):
+    """The Gmail query for every newsletter that arrived since the previous edition."""
+    return f"newer_than:{days}d from:(" + " OR ".join(a for _, a in newsletters(path)) + ")"
 
 if __name__ == "__main__":
     sys.exit(_cli(sys.argv[1:]))

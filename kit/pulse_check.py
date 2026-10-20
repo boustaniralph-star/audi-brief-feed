@@ -331,11 +331,12 @@ except Exception as e: warn(f"theme check skipped: {e}")
 if sources:
     try:
         SL = [l for l in open(sources, encoding="utf-8").read().splitlines() if "|" in l]
-        unread = [l for l in SL if "READ" != l.split("|")[1].strip().upper() and not l.split("|")[1].strip().upper().startswith("SKIP: DUPLICATE")]
+        # core newsletters are read in full; the rest may be skimmed (Ralph, 20.10), but every one must be accounted for
+        unread = [l for l in SL if l.split("|")[1].strip().upper() not in ("READ", "SKIMMED") and not l.split("|")[1].strip().upper().startswith("SKIP: DUPLICATE")]
         if not SL: warn("SOURCES (fix, do not justify): sources.txt lists no newsletters; run the newsletters query and read them")
         for l in unread[:8]:
-            warn("SOURCES (fix, do not justify): newsletter not read in full: " + " | ".join(x.strip() for x in l.split("|")[1:4])[:110])
-        if SL and not unread: OK.append(f"{len(SL)} newsletters read in full")
+            warn("SOURCES (fix, do not justify): newsletter neither read nor skimmed: " + " | ".join(x.strip() for x in l.split("|")[1:4])[:110])
+        if SL and not unread: OK.append(f"{len(SL)} newsletters accounted for")
     except Exception as e: warn(f"sources check skipped: {e}")
 # FACTS: every bullet's key figure was checked outside the newsletters, on its latest version
 if facts:

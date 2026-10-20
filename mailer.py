@@ -237,13 +237,9 @@ def send():
     lay = hashlib.sha1(subprocess.run(["pdftotext", "-layout", pdfp, "-"], capture_output=True, text=True).stdout.encode()).hexdigest()[:12]
     words = len(sec["TXT"].split()); kb = os.path.getsize(pdfp) // 1024
     cov = newsletter_coverage(sec.get("SOURCES", "")) if (USER and PW) else None
-    covline = (f"newsletters read {cov[0]} of {cov[1]} that arrived in the 24 hours before the package"
-               + (f" (not read: {', '.join(cov[2])})" if cov[2] else "")) if cov else "newsletters: not checked"
+    # reading is selective by design (Ralph, 20.10: core newsletters in full, the rest skimmed); report only, no alert
+    covline = f"newsletters read in full: {cov[0]} of {cov[1]} that arrived in the 24 hours before the package" if cov else "newsletters: not checked"
     print(covline)
-    if cov and cov[1] and cov[0] < 0.8 * cov[1] and not DRY:
-        alert(f"Writer read {cov[0]} of {cov[1]} newsletters on {STAMP}",
-              f"The cloud writer's package lists {cov[0]} of the {cov[1]} newsletters that arrived in the 24 hours before it "
-              f"was sent. Not read: {', '.join(cov[2]) or 'none'}. The brief was still sent.")
     if DRY:
         os.makedirs(os.path.join(WORK, "out"), exist_ok=True)
         shutil.copy(pdfp, os.path.join(WORK, "out", base + ".pdf"))

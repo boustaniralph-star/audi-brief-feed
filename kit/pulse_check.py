@@ -231,7 +231,7 @@ try:
         return (float(q.group(1).replace(",", "")) * mult.get((q.group(2) or "").lower(), 1), (q.group(3) or "")) if q else None
     for pnl in C["p2"].get("gcc_panels", []):
         lab = pnl.get("label", "")
-        if len(pnl.get("value", "")) + len(pnl.get("small", "")) / 2 > 16:
+        if len(pnl.get("value", "")) + len(pnl.get("small", "")) / 2 > 13.5:
             warn(f"DESKTOP STANDARD (fix, do not justify): panel '{lab}': '{pnl.get('value','')} {pnl.get('small','')}' wraps; keep the figure short and the words after it to 2-4 words (e.g. '70%' + 'of the refinery's crude')")
         for b in pnl.get("bars", []):
             if len(b.get("t", "")) > 22:
@@ -352,9 +352,12 @@ if facts:
             warn("FACTS (fix, do not justify): no facts.txt line for '" + l + "': verify its key figure on the latest source and log it")
         for f in FL:
             src = f[2].lower()
-            primary = any(k in src for k in ("http", "official", "market_data", "robinhood", "ibkr", "exchange", "filing"))
-            if not src or (any(n in src for n in NL) and not primary):
-                warn("FACTS (fix, do not justify): '" + f[0] + "' is verified only by a newsletter (" + f[2][:40] + "); confirm it on a primary or wire source, an official close or market_data.json")
+            if not src:
+                warn("FACTS (fix, do not justify): '" + f[0] + "' has no verification source")
+            elif "google.com/url" in src or "click." in src or "links." in src:
+                warn("FACTS (fix, do not justify): '" + f[0] + "' cites a newsletter tracking link; open the source page itself and cite its own address")
+            elif any(n in src for n in NL):
+                warn("FACTS (fix, do not justify): '" + f[0] + "' is verified partly by a newsletter (" + f[2][:50] + "); confirm every figure and date in it on a primary or wire source, or cut what you cannot")
         if FL and not miss: OK.append(f"{len(FL)} key figures verified")
     except Exception as e: warn(f"facts check skipped: {e}")
 if pdf:

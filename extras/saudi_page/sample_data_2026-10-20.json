@@ -1,0 +1,440 @@
+{
+ "date": "21-10-2026",
+ "pulse": {
+  "session": "Tuesday 20.10 session",
+  "tasi": {
+   "c": 9952.06,
+   "d": -1.69,
+   "y": -5.1
+  },
+  "breadth": {
+   "up": 19,
+   "down": 243,
+   "flat": 6,
+   "hi": 0,
+   "lo": 105
+  },
+  "turnover": {
+   "v": 3767.2,
+   "vs20": 9
+  },
+  "sectors": [
+   {
+    "name": "Staples retail",
+    "d": -0.62,
+    "w": -3.1,
+    "y": -16.09
+   },
+   {
+    "name": "Banks",
+    "d": -0.99,
+    "w": -2.79,
+    "y": -2.22
+   },
+   {
+    "name": "Health care",
+    "d": -1.03,
+    "w": -6.33,
+    "y": -21.93
+   },
+   {
+    "name": "Commercial services",
+    "d": -1.04,
+    "w": -5.62,
+    "y": -20.95
+   },
+   {
+    "name": "REITs",
+    "d": -1.07,
+    "w": -2.49,
+    "y": -8.44
+   },
+   {
+    "name": "Discretionary retail",
+    "d": -1.11,
+    "w": -4.79,
+    "y": -31.3
+   },
+   {
+    "name": "Food & beverages",
+    "d": -1.12,
+    "w": -6.07,
+    "y": -17.01
+   },
+   {
+    "name": "Transportation",
+    "d": -1.14,
+    "w": -4.46,
+    "y": -43.02
+   },
+   {
+    "name": "Pharma & biotech",
+    "d": -1.17,
+    "w": -0.57,
+    "y": -4.68
+   },
+   {
+    "name": "Energy",
+    "d": -1.21,
+    "w": -1.87,
+    "y": 2.32
+   },
+   {
+    "name": "Consumer services",
+    "d": -1.72,
+    "w": -5.82,
+    "y": -15.89
+   },
+   {
+    "name": "Software",
+    "d": -1.83,
+    "w": -4.86,
+    "y": -16.89
+   },
+   {
+    "name": "Durables & apparel",
+    "d": -1.84,
+    "w": -7.34,
+    "y": -13.78
+   },
+   {
+    "name": "Capital goods",
+    "d": -2.1,
+    "w": -5.71,
+    "y": -19.02
+   },
+   {
+    "name": "Telecom",
+    "d": -2.16,
+    "w": -3.27,
+    "y": -12.96
+   },
+   {
+    "name": "Financial services",
+    "d": -2.62,
+    "w": -5.94,
+    "y": -25.63
+   },
+   {
+    "name": "Materials",
+    "d": -3.09,
+    "w": -4.2,
+    "y": -12.6
+   },
+   {
+    "name": "Utilities",
+    "d": -3.59,
+    "w": -3.71,
+    "y": -27.41
+   },
+   {
+    "name": "Insurance*",
+    "d": -3.68,
+    "w": -7.61,
+    "y": -6.4
+   },
+   {
+    "name": "Real estate",
+    "d": -3.9,
+    "w": -4.87,
+    "y": -21.79
+   },
+   {
+    "name": "Media",
+    "d": -4.29,
+    "w": -8.69,
+    "y": -54.73
+   }
+  ],
+  "gainers": [
+   {
+    "c": 1325,
+    "n": "Watani Steel",
+    "px": 2.99,
+    "d": 3.1,
+    "w": -6.85,
+    "y": 81.21,
+    "hi": 0,
+    "lo": 0,
+    "val": 135.4,
+    "v20": 25.6
+   },
+   {
+    "c": 6019,
+    "n": "Almasar Education",
+    "px": 21.18,
+    "d": 1.68,
+    "w": -2.4,
+    "y": -15.89,
+    "hi": 0,
+    "lo": 0,
+    "val": 1.7,
+    "v20": 2.2
+   },
+   {
+    "c": 2330,
+    "n": "Advanced Petrochemical",
+    "px": 23.55,
+    "d": 1.55,
+    "w": 6.18,
+    "y": -20.28,
+    "hi": 0,
+    "lo": 0,
+    "val": 45.5,
+    "v20": 11.6
+   },
+   {
+    "c": 7040,
+    "n": "GO Telecom",
+    "px": 72.45,
+    "d": 1.47,
+    "w": 0.63,
+    "y": -20.03,
+    "hi": 0,
+    "lo": 0,
+    "val": 26.3,
+    "v20": 13.3
+   },
+   {
+    "c": 4162,
+    "n": "Almunajem",
+    "px": 53.1,
+    "d": 1.34,
+    "w": -2.12,
+    "y": 3.81,
+    "hi": 0,
+    "lo": 0,
+    "val": 3.9,
+    "v20": 3.1
+   }
+  ],
+  "losers": [
+   {
+    "c": 4070,
+    "n": "Tihama",
+    "px": 15.92,
+    "d": -8.29,
+    "w": -17.34,
+    "y": -2.21,
+    "hi": 0,
+    "lo": 0,
+    "val": 2.1,
+    "v20": 1.3
+   },
+   {
+    "c": 2290,
+    "n": "Yansab",
+    "px": 30.36,
+    "d": -6.53,
+    "w": -8.33,
+    "y": 8.43,
+    "hi": 0,
+    "lo": 0,
+    "val": 49.7,
+    "v20": 13.7
+   },
+   {
+    "c": 2100,
+    "n": "Wafrah",
+    "px": 17.6,
+    "d": -6.48,
+    "w": -11.51,
+    "y": -15.63,
+    "hi": 0,
+    "lo": 1,
+    "val": 4.6,
+    "v20": 2.1
+   },
+   {
+    "c": 8160,
+    "n": "Arabia Insurance",
+    "px": 6.9,
+    "d": -6.38,
+    "w": -14.07,
+    "y": -26.12,
+    "hi": 0,
+    "lo": 1,
+    "val": 0.9,
+    "v20": 0.5
+   },
+   {
+    "c": 8050,
+    "n": "Salama Insurance",
+    "px": 6.66,
+    "d": -6.2,
+    "w": -10.0,
+    "y": -27.45,
+    "hi": 0,
+    "lo": 1,
+    "val": 3.3,
+    "v20": 3.5
+   }
+  ],
+  "active": [
+   {
+    "c": 1120,
+    "n": "Al Rajhi Bank",
+    "px": 60.15,
+    "d": -0.66,
+    "w": -3.14,
+    "y": -7.65,
+    "hi": 0,
+    "lo": 1,
+    "val": 388.8,
+    "v20": 380.4
+   },
+   {
+    "c": 2222,
+    "n": "Aramco",
+    "px": 25.48,
+    "d": -1.24,
+    "w": -1.16,
+    "y": 6.7,
+    "hi": 0,
+    "lo": 0,
+    "val": 300.5,
+    "v20": 230.1
+   },
+   {
+    "c": 7020,
+    "n": "Mobily",
+    "px": 58.35,
+    "d": -2.83,
+    "w": -5.2,
+    "y": -11.92,
+    "hi": 0,
+    "lo": 1,
+    "val": 152.3,
+    "v20": 53.7
+   },
+   {
+    "c": 1180,
+    "n": "SNB",
+    "px": 36.54,
+    "d": -1.19,
+    "w": -3.08,
+    "y": -3.99,
+    "hi": 0,
+    "lo": 0,
+    "val": 137.4,
+    "v20": 249.9
+   },
+   {
+    "c": 1325,
+    "n": "Watani Steel",
+    "px": 2.99,
+    "d": 3.1,
+    "w": -6.85,
+    "y": 81.21,
+    "hi": 0,
+    "lo": 0,
+    "val": 135.4,
+    "v20": 25.6
+   }
+  ],
+  "sowhat": "A broad sell-off: 243 of 268 stocks fell and 105 hit 52-week lows as TASI lost 1.69% on turnover 9% above its 20-day average; real estate (-3.9%) and utilities (-3.6%) fell most. Yansab fell 6.5% even after reporting profit up 220%."
+ },
+ "events": {
+  "window": "Q3 2026 results season",
+  "results": [
+   {
+    "co": "Al Rajhi Bank",
+    "q": "Q3",
+    "np": "SAR 7.11 bn",
+    "chg": 11.73,
+    "rev": null,
+    "prev": "SAR 6.36 bn"
+   },
+   {
+    "co": "Saudi National Bank",
+    "q": "Q3",
+    "np": "SAR 6.45 bn",
+    "chg": -0.29,
+    "rev": null,
+    "prev": "SAR 6.47 bn"
+   },
+   {
+    "co": "Riyad Bank",
+    "q": "Q3",
+    "np": "SAR 2.87 bn",
+    "chg": 6.64,
+    "rev": null,
+    "prev": "SAR 2.69 bn"
+   },
+   {
+    "co": "Alinma Bank",
+    "q": "Q3",
+    "np": "SAR 1.59 bn",
+    "chg": -0.23,
+    "rev": null,
+    "prev": "SAR 1.59 bn"
+   },
+   {
+    "co": "Arab National Bank",
+    "q": "Q3",
+    "np": "SAR 1.35 bn",
+    "chg": 1.62,
+    "rev": null,
+    "prev": "SAR 1.33 bn"
+   },
+   {
+    "co": "Bank AlJazira",
+    "q": "Q3",
+    "np": "SAR 472 mn",
+    "chg": 17.86,
+    "rev": null,
+    "prev": "SAR 400 mn"
+   },
+   {
+    "co": "Yansab",
+    "q": "Q3",
+    "np": "SAR 237 mn",
+    "chg": 219.86,
+    "rev": null,
+    "prev": "SAR 74 mn"
+   },
+   {
+    "co": "SABIC Agri-Nutrients",
+    "q": "Q3",
+    "np": "SAR 484 mn",
+    "chg": -62.48,
+    "rev": null,
+    "prev": "SAR 1.29 bn"
+   }
+  ],
+  "results_note": "Banks reported 21.10, Yansab and SABIC Agri-Nutrients 20.10. Results in so far this season, latest first.",
+  "calendar": [
+   {
+    "d": "by 30.10",
+    "t": "Deadline for listed companies' Q3 results (30 days after quarter end)"
+   },
+   {
+    "d": "weekly",
+    "t": "Foreign ownership and flows: Tadawul's weekly report (source still to be wired)"
+   },
+   {
+    "d": "pending",
+    "t": "Dividend eligibility and payment dates: source still being tested"
+   }
+  ],
+  "lines": [
+   {
+    "k": "Rights issue approved.",
+    "t": "AMAK, SAR 680 mn."
+   },
+   {
+    "k": "Rights issues announced.",
+    "t": "Chemanol SAR 350 mn, Kathiri SAR 150 mn, Thimar SAR 130 mn, Raydan SAR 105 mn."
+   },
+   {
+    "k": "IPOs announced.",
+    "t": "Tamimi Energy, Batterjee Holding and Safqah Capital; size and dates not yet set."
+   },
+   {
+    "k": "Private placements approved.",
+    "t": "Retal SAR 882 mn at SAR 16.03 a share; ACIG SAR 9 mn."
+   }
+  ],
+  "sowhat": "Banks are carrying the season: Al Rajhi +11.7% and Bank AlJazira +17.9%, while SABIC Agri-Nutrients' profit fell 62%."
+ }
+}

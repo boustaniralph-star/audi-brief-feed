@@ -291,25 +291,64 @@ def _cli(a):
         json.dump(C2, open(a[1], "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         print("YTD added to", n, "bullet(s)"); return 0
     if a and a[0] == "newsletters":
-        print(newsletter_query()); return 0
+        print(newsletter_query())
+        print("\nREADING ORDER (read in full from the top; go further down only while stories repeat or a section is short;"
+              " tier 3 = snippets only). Last 30 editions: full reads, stories used.")
+        for i, (n, tier, reads, used) in enumerate(newsletter_order(), 1):
+            print(f"{i:2d}. {n} (tier {tier}; read {reads}x, gave {used} stories)")
+        return 0
     print(USAGE); return 1
 
 
-def newsletters(path=None):
-    """[(name, address)] from newsletters.txt next to this file (or path)."""
+def _newsletter_rows(path=None):
     path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "newsletters.txt")
     out = []
     for l in open(path, encoding="utf-8"):
         l = l.strip()
         if l and not l.startswith("#") and "|" in l:
-            n, a = [x.strip() for x in l.split("|", 1)]
-            out.append((n, a))
+            f = [x.strip() for x in l.split("|")]
+            out.append((f[0], f[1], int(f[2]) if len(f) > 2 and f[2].isdigit() else 2))
     return out
+
+
+def newsletters(path=None):
+    """[(name, address)] from newsletters.txt next to this file (or path)."""
+    return [(n, a) for n, a, _ in _newsletter_rows(path)]
 
 
 def newsletter_query(days=1, path=None):
     """The Gmail query for every newsletter that arrived since the previous edition."""
     return f"newer_than:{days}d from:(" + " OR ".join(a for _, a in newsletters(path)) + ")"
 
+
+def newsletter_order(path=None, stats=None, editions=30):
+    """Reading order: tier first (1 before 2 before 3), then the stories each newsletter gave the brief per full read
+    over the last `editions` editions (sent/newsletter_stats.txt: 'DD-MM-YYYY | name | READ|SKIMMED | used'). A tier-2
+    newsletter that keeps giving more stories than a tier-1 one moves up past it. Returns [(name, tier, reads, used)]."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    stats = stats or next((p for p in (os.path.join(here, "newsletter_stats.txt"), os.path.join(here, "..", "sent", "newsletter_stats.txt"))
+                           if os.path.exists(p)), None)
+    rows, seen = [], set()
+    for n, _, tier in _newsletter_rows(path):
+        if n not in seen:
+            seen.add(n); rows.append((n, tier))
+    lines = []
+    if stats:
+        for l in open(stats, encoding="utf-8"):
+            f = [x.strip() for x in l.split("|")]
+            if len(f) >= 4 and re.match(r"\d\d-\d\d-\d{4}$", f[0]) and f[3].isdigit():
+                lines.append(f)
+    dates = sorted({f[0] for f in lines}, key=lambda d: d[6:] + d[3:5] + d[:2])[-editions:]
+    lines = [f for f in lines if f[0] in dates]
+    out = []
+    for n, tier in rows:
+        reads = sum(1 for f in lines if f[1] == n and f[2] == "READ")
+        used = sum(int(f[3]) for f in lines if f[1] == n)
+        prior = {1: 1.5, 2: .6, 3: 0}[min(tier, 3)]
+        yld = (used + prior * 2) / (reads + 2)  # shrunk toward the tier's expected yield until there are enough reads
+        score = {1: 2.0, 2: 1.0, 3: -5}[min(tier, 3)] + yld
+        out.append((score, n, tier, reads, used))
+    out.sort(key=lambda r: -r[0])
+    return [(n, tier, reads, used) for _, n, tier, reads, used in out]
 if __name__ == "__main__":
     sys.exit(_cli(sys.argv[1:]))

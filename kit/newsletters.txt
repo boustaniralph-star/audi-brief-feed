@@ -1,22 +1,25 @@
-# Ralph's newsletters: name | sender address. The writer's Gmail query (python3 enrich.py newsletters) and GitHub's
-# reading check (mailer.py) both come from this file; add or remove a newsletter here and both follow.
-EnterpriseAM Saudi | newsletter@ksa.enterpriseam.com
-Ground News | daily@groundnewsletter.com
-History Facts | hello@historyfacts.com
-The Daily Skimm | dailyskimm@morning7.theskimm.com
-Front Office Sports | frontofficesports@mail.beehiiv.com
-Interesting Facts | hello@interestingfacts.com
-Business Insider | newsletter@email.businessinsider.com
-Reuters | dailybriefing@thomsonreuters.com
-Morning Brew | crew@morningbrew.com
-Retail Brew | retailbrew@morningbrew.com
-Tech Brew | techbrew@morningbrew.com
-CFO Brew | cfobrew@morningbrew.com
-Brew Markets | brewmarkets@morningbrew.com
-Bloomberg | noreply@news.bloomberg.com
-Investopedia | newsletters@mail.investopedia.com
-Investopedia | Investopedia@mail.investopedia.com
-SoFi | SoFi@newsletter.sofi.com
-Exec Sum - Litquidity | news@execsum.co
-Snacks | hello@snacks.robinhood.com
-The Rundown AI | news@daily.therundown.ai
+# Ralph's newsletters: name | sender address | tier. The writer's Gmail query and reading order (python3 enrich.py
+# newsletters) and GitHub's reading check (mailer.py) all come from this file; add or remove a newsletter here and all follow.
+# Tier 1 = read first, in full, in this order (the juiciest market and Gulf stories); tier 2 = read next, only while
+# stories repeat or a section is short; tier 3 = snippets only (lifestyle and trivia). Within the tiers the order adapts
+# to how many stories each newsletter actually gave the brief over the last 30 editions (sent/newsletter_stats.txt).
+EnterpriseAM Saudi | newsletter@ksa.enterpriseam.com | 1
+Bloomberg | noreply@news.bloomberg.com | 1
+Reuters | dailybriefing@thomsonreuters.com | 1
+Exec Sum - Litquidity | news@execsum.co | 1
+Brew Markets | brewmarkets@morningbrew.com | 1
+Investopedia | newsletters@mail.investopedia.com | 1
+Investopedia | Investopedia@mail.investopedia.com | 1
+Business Insider | newsletter@email.businessinsider.com | 2
+CFO Brew | cfobrew@morningbrew.com | 2
+Snacks | hello@snacks.robinhood.com | 2
+The Rundown AI | news@daily.therundown.ai | 2
+Morning Brew | crew@morningbrew.com | 2
+Tech Brew | techbrew@morningbrew.com | 2
+SoFi | SoFi@newsletter.sofi.com | 2
+Ground News | daily@groundnewsletter.com | 2
+Retail Brew | retailbrew@morningbrew.com | 3
+The Daily Skimm | dailyskimm@morning7.theskimm.com | 3
+Front Office Sports | frontofficesports@mail.beehiiv.com | 3
+History Facts | hello@historyfacts.com | 3
+Interesting Facts | hello@interestingfacts.com | 3

@@ -1,0 +1,14 @@
+name: saudi-probe (one-off test, not part of the brief)
+on:
+  push:
+    branches: [claude/clever-hypatia-z5d79v]
+    paths: ["probe/**", ".github/workflows/saudi-probe.yml"]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python3 probe/saudi_probe.py

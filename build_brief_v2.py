@@ -349,15 +349,20 @@ def rebased(names, out, w=3.45, h=1.5, days=11):
         rb = [x / v[0] * 100 for x in v]
         ax.plot(range(len(rb)), rb, color=c, lw=1.8 if n == names[0] else 1.3)
         ends.append([rb[-1], n, c])
-    lo = min(e[0] for e in ends); hi = max(e[0] for e in ends)
-    ends.sort(key=lambda e: e[0]); pos = [e[0] for e in ends]; thr = (hi - lo + 1) * .18
-    for a in range(1, len(pos)):
-        if pos[a] - pos[a-1] < thr: pos[a] = pos[a-1] + thr
-    for e, p in zip(ends, pos):
-        ax.annotate(f"{SHORT.get(e[1], e[1])} {e[0]-100:+.1f}%", (len(rb) - 1, e[0]), xytext=(6, (p - e[0]) * h * 72 * .6 / (hi - lo + 2)),
-                    textcoords="offset points", va="center", fontsize=7, color=e[2], fontweight="bold")
     xs, _ = _ser(names[0], start)
     ax.set_xticks(range(len(xs))); ax.set_xticklabels([d.strftime("%d %b") if i % 3 == 0 else "" for i, d in enumerate(xs)], fontsize=6.6)
+    # end labels are spaced in points (at least 9 pt apart) on the drawn axes, so close finishes never print on top of each other
+    plt.tight_layout(pad=.2); fig.canvas.draw()
+    y0, y1 = ax.get_ylim(); ax.set_ylim(y0, y1)
+    ppu = ax.get_window_extent().height / fig.dpi * 72 / (y1 - y0)
+    ends.sort(key=lambda e: e[0]); pos = [e[0] * ppu for e in ends]
+    for a in range(1, len(pos)):
+        pos[a] = max(pos[a], pos[a-1] + 9)
+    shift = (pos[-1] - ends[-1][0] * ppu) / 2
+    for e, p in zip(ends, pos):
+        ax.annotate(f"{SHORT.get(e[1], e[1])} {e[0]-100:+.1f}%", (len(rb) - 1, e[0]), xytext=(6, p - shift - e[0] * ppu),
+                    textcoords="offset points", va="center", fontsize=7, color=e[2], fontweight="bold", zorder=6,
+                    bbox=dict(facecolor="white", edgecolor="none", pad=.8))
     ax.axhline(100, color=SILVER, lw=.6, ls=(0, (2, 2)))
     ax.set_xlim(-.2, len(xs) + 2.6)
     ax.yaxis.grid(True, color=GRID, lw=.6); ax.set_axisbelow(True); clean(ax)
@@ -588,8 +593,8 @@ def main(content_p, md_p, hero_p, out_pdf):
   <div class="catalyst"><b>Next catalyst</b>{nums(cot["catalyst"])}</div>{means}</div>
  <div class="cols"><div class="col">{"".join(sec(t, i) for t, i in p1["left"])}{X.render_extras(p1.get("extras_left"))}</div><div class="col">{"".join(sec(t, i) for t, i in p1["right"])}{X.render_extras(p1.get("extras_right"))}</div></div>
  <div class="foot"><div><b>Audi Capital</b> | Daily Brief | {D}</div><div class="pg">01 / 02</div></div></div>'''
-    left2 = "".join(sec(t, i, fis if t.startswith("GCC") else "") for t, i in p2["left"])
-    right2 = "".join(sec(t, i) for t, i in p2["right"])
+    left2 = "".join(sec(t, i, fis if t.startswith("GCC") else "") for t, i in p2["left"]) + X.render_extras(p2.get("extras_left"))
+    right2 = "".join(sec(t, i) for t, i in p2["right"]) + X.render_extras(p2.get("extras_right"))
     page2 = f'''<div class="page">
  <div class="runhead"><img src="wordmark.png"><div class="r">Daily Brief | {D} | Charts &amp; regions</div></div>
  <div class="cols" style="margin-top:0"><div class="col">{card_html(0, cards[0])}</div><div class="col">{card_html(1, cards[1])}</div></div>
@@ -599,14 +604,47 @@ def main(content_p, md_p, hero_p, out_pdf):
     doc = f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}{X.EXTRA_CSS}</style></head><body>{page1}{page2}</body></html>'
     open("brief_v2.html", "w", encoding="utf-8").write(doc)
     from weasyprint import HTML
-    HTML(filename="brief_v2.html", base_url=os.getcwd()).write_pdf(out_pdf)
+    rendered = HTML(filename="brief_v2.html", base_url=os.getcwd()).render()
+    rendered.write_pdf(out_pdf)
     print("wrote", out_pdf)
+    lay = measure(rendered, out_pdf)
+    json.dump(lay, open("layout.json", "w"))
+    if lay.get("p2"):
+        q = lay["p2"]
+        print(f"layout: page 2 card A {q['cardA']:.0f} pt, card B {q['cardB']:.0f} pt; region columns end {q['left_gap']:.0f} / {q['right_gap']:.0f} pt above the question band")
     X.check_pdf_overlap(out_pdf, {t.lower().strip('.,;:') for t in (C['watch']['text'] + ' ' + C['watch'].get('label', 'Watch today') + ' ' + C['watch']['clock']).split()})
     if X.WARN:
         print("OVERLAP WARNINGS:", len(X.WARN))
         for w_ in X.WARN: print("  -", w_)
         sys.exit(4)
     print("overlap check: clean")
+
+
+def measure(doc, pdf_name):
+    """Heights of the page-2 cards and how far each region column ends above the question band, in pt."""
+    def cls(b):
+        el = getattr(b, "element", None)
+        return (el.get("class") or "").split() if el is not None and getattr(b, "element_tag", None) else []
+    def walk(b):
+        yield b
+        for c in getattr(b, "children", []) or []:
+            yield from walk(c)
+    out = {"pdf": os.path.basename(pdf_name)}
+    if len(doc.pages) < 2:
+        return out
+    boxes = list(walk(doc.pages[1]._page_box))
+    cards = [b for b in boxes if "card" in cls(b)]
+    watch = next((b for b in boxes if "watch" in cls(b)), None)
+    rows = [b for b in boxes if "cols" in cls(b)]
+    if len(cards) < 2 or watch is None or len(rows) < 2:
+        return out
+    # a grid column stretches to the row height, so its content ends where its last child block ends
+    bottom = lambda col: max((c.position_y + c.margin_height() for c in col.children), default=col.position_y)
+    cols = [c for c in rows[1].children if "col" in cls(c)]
+    pt = .75  # CSS px to pt
+    out["p2"] = {"cardA": cards[0].border_height() * pt, "cardB": cards[1].border_height() * pt,
+                 "left_gap": (watch.position_y - bottom(cols[0])) * pt, "right_gap": (watch.position_y - bottom(cols[1])) * pt}
+    return out
 
 
 if __name__ == "__main__":

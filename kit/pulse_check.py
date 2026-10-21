@@ -336,6 +336,10 @@ if sources:
         if not SL: warn("SOURCES (fix, do not justify): sources.txt lists no newsletters; run the newsletters query and read them")
         for l in unread[:8]:
             warn("SOURCES (fix, do not justify): newsletter neither read nor skimmed: " + " | ".join(x.strip() for x in l.split("|")[1:4])[:110])
+        if today_d >= dt.date(2026, 10, 22):
+            nou = [l for l in SL if l.split("|")[1].strip().upper() == "READ" and not re.search(r"used\s*=\s*\d+", l)]
+            for l in nou[:4]:
+                warn("SOURCES (fix, do not justify): READ line has no 'used=N' (stories in this brief that came from it): " + " | ".join(x.strip() for x in l.split("|")[1:3]))
         if SL and not unread: OK.append(f"{len(SL)} newsletters accounted for")
     except Exception as e: warn(f"sources check skipped: {e}")
 # FACTS: every bullet's key figure was checked outside the newsletters, on its latest version
@@ -343,7 +347,7 @@ if facts:
     try:
         NL = ("enterpriseam", "ground news", "history facts", "skimm", "front office", "interesting facts", "business insider",
               "morning brew", "retail brew", "tech brew", "cfo brew", "brew markets", "investopedia", "sofi", "exec sum",
-              "litquidity", "snacks", "rundown", "newsletter")
+              "litquidity", "snacks", "rundown", "newsletter", "substack", "cappnotes", "beehiiv")
         FL = [[x.strip() for x in l.split("|")] for l in open(facts, encoding="utf-8").read().splitlines() if l.count("|") >= 3]
         have = {f[0].lower().rstrip(".") for f in FL}
         leads = [b[0] for pg in ("p1", "p2") for side in ("left", "right") for sec_ in C.get(pg, {}).get(side, []) or [] for b in sec_[1]]
@@ -361,6 +365,148 @@ if facts:
                 warn("FACTS (fix, do not justify): '" + f[0] + "' is verified partly by a newsletter (" + f[2][:50] + "); confirm every figure and date in it on a primary or wire source, or cut what you cannot")
         if FL and not miss: OK.append(f"{len(FL)} key figures verified")
     except Exception as e: warn(f"facts check skipped: {e}")
+# STORY DISCIPLINE (Ralph, 21.10.2026): one story appears once, figures never contradict, the teaser is truly ahead,
+# and both pages look full (page 2 included: card A against card B, and the region columns against the question band)
+EDITION = dt.datetime.strptime(C["date"], "%d-%m-%Y").date() if re.match(r"\d\d-\d\d-\d{4}$", C.get("date", "")) else today_d
+COMMON = set("""saudi arabia arabian gulf gcc mena us usd sar aed the and for with from that this its their after before into over
+under than about against while as at by in of on to up down per year years week weeks month months day days today yesterday tomorrow
+monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october
+november december q1 q2 q3 q4 h1 h2 fy brent wti tasi dow nasdaq s&p stoxx dax cac ftse nikkei kospi hang seng sensex csi europe
+european asia asian china chinese india indian japan japanese uae qatar kuwait bahrain oman egypt iran israel uk britain british
+kingdom riyadh dubai abu dhabi adx dfm tadawul wall street ai ipo ceo eps ytd fed ecb treasury dollar oil gold index market markets
+shares share stock stocks bn mn billion million trillion percent profit profits revenue sales quarter quarterly results net income
+rose fell gained lost jumped dropped closed close closes trading traded price prices points rate rates yield yields bonds bond
+company companies group firm government governments bank banks investors investor deal deals said says will would could also more
+most less new first last largest biggest record high low highs lows since tons barrel barrels expected
+france french germany german italy spain russia russian ukraine korea korean taiwan turkey yemen lebanon syria iraq jordan
+pakistan brazil mexico canada indonesia vietnam africa nigeria argentina australia washington beijing tokyo london paris berlin
+seoul moscow trump president minister white house congress reuters bloomberg afp xinhua cnbc wsj spa wam argaam zawya
+agbi asharq gdp composite cpi inflation pmi"""
+.split())
+def _stem(w):
+    w = w.lower().strip(".,;:()'\"")
+    return w[:-1] if len(w) > 4 and w.endswith("s") and not w.endswith("ss") else w
+def _words(s):
+    s = re.sub(r"<[^>]+>", " ", s)
+    return {_stem(w) for w in re.findall(r"[A-Za-z][A-Za-z\-&']{3,}", s)} - COMMON
+def _names(s):
+    s = re.sub(r"<[^>]+>", " ", s)
+    ns = {re.sub(r"'s$", "", w.strip(".,;:()'\"")) for w in re.findall(r"\b[A-Z][A-Za-z0-9\-&']{2,}", s)}
+    return {w for w in ns if w.lower() not in COMMON}
+QUOTED = {abs(round(float(i.get(k)), 2)) for i in M.get("items", []) for k in ("close", "chgDay", "chgYtd") if isinstance(i.get(k), (int, float))}
+def _figs(s):
+    """[(value, decimals, strong)] for the figures in s: years and DD.MM dates skipped; 'strong' = 3+ significant digits
+    or a percentage of 10 or more (distinctive enough to identify a story)."""
+    out = []
+    for m in re.finditer(r"(?<![\d.])(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)(?![\d]|[a-zA-Z])(\s?%)?", re.sub(r"<[^>]+>", " ", s)):
+        raw, pct = m.group(1), m.group(2)
+        v = raw.replace(",", "")
+        dm = re.fullmatch(r"(\d{1,2})\.(\d{2})", raw)
+        if re.fullmatch(r"20[2-3]\d", v) or (dm and not pct and 1 <= int(dm.group(1)) <= 31 and 1 <= int(dm.group(2)) <= 12):
+            continue  # years and DD.MM dates are not story figures
+        sig = len(v.replace(".", "").strip("0"))
+        if sig < 2 and not pct: continue
+        if float(v) in QUOTED: continue  # an official close, day move or YTD is a market quote, not a story figure
+        # distinctive: an amount with 3+ significant digits, or a move of 10% or more (small % moves coincide too often)
+        out.append((float(v), len(v.split(".")[1]) if "." in v else 0, (float(v) >= 10) if pct else sig >= 3, raw, bool(pct)))
+    return out
+def _same_fig(A, B):
+    """Figures shared by two stories, allowing for rounding (15.73 and 15.7, 34.8 and 35)."""
+    hit = []
+    for a in A:
+        for b in B:
+            if not (a[2] and b[2]) or a[4] != b[4]: continue  # both distinctive; a percentage only matches a percentage
+            d = min(a[1], b[1])
+            if d == 0 and a[0] != b[0] and (a[4] or max(a[0], b[0]) < 20): continue  # whole-number rounding only for large amounts
+            if abs(a[0] - b[0]) <= .5 * 10 ** -d + 1e-9: hit.append(a[3] if a[1] >= b[1] else b[3])
+    return sorted(set(hit))
+try:
+    if today_d >= dt.date(2026, 10, 22):
+        RP = "REPETITION (fix: one story appears once; give the space to a new story): "
+        units = []
+        cot = C.get("cotd", {})
+        units.append(("Company of the Day", cot.get("name", "") + " " + cot.get("body", "")))
+        for pg in ("p1", "p2"):
+            for side in ("left", "right"):
+                for sec_ in C.get(pg, {}).get(side, []) or []:
+                    for b in sec_[1]:
+                        units.append((f"{sec_[0]} '{b[0]}'", b[0] + " " + b[1]))
+        for x in (C.get("p1", {}).get("extras_left") or []) + (C.get("p1", {}).get("extras_right") or []):
+            if x.get("type") == "numday": units.append(("Number of the day", x.get("value", "") + " " + x.get("text", "")))
+        for pnl in C.get("p2", {}).get("gcc_panels", []) or []:
+            units.append((f"panel '{pnl.get('label')}'", " ".join([pnl.get("label", ""), pnl.get("value", ""), pnl.get("caption", "")] + [b.get("t", "") for b in pnl.get("bars", [])])))
+        feats = [(lab, _names(tx), _words(tx), _figs(tx)) for lab, tx in units]
+        hits = 0
+        for i in range(len(feats)):
+            for j in range(i + 1, len(feats)):
+                a, b = feats[i], feats[j]
+                why = []
+                nm = sorted(a[1] & b[1])
+                if nm: why.append("both name " + ", ".join(nm[:3]))
+                fg = _same_fig(a[3], b[3])
+                if fg: why.append("both quote " + ", ".join(fg[:3]))
+                wd = sorted(a[2] & b[2])
+                if not why and len(wd) >= 3: why.append("same subject (" + ", ".join(wd[:4]) + ")")
+                if why:
+                    hits += 1
+                    if hits <= 8: warn(RP + f"{a[0]} and {b[0]}: {'; '.join(why)}")
+        if not hits: OK.append("no story repeated")
+        # contradictions: every figure in Today in 3 and in the Company of the Day stats must match the body exactly
+        CT = "CONTRADICTION (fix, do not justify): "
+        body = " ".join(tx for _, tx in units)
+        bnums = [float(x.replace(",", "")) for x in re.findall(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?", re.sub(r"<[^>]+>", " ", body))]
+        def _found(raw, pool):
+            v = float(raw.replace(",", "")); dec = len(raw.split(".")[1]) if "." in raw else 0
+            return any(abs(b - v) <= .5 * 10 ** -dec + 1e-9 for b in pool)
+        for x in C.get("top3", []) or []:
+            for raw in re.findall(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?", x.get("k", "") + " " + x.get("t", "")):
+                if re.fullmatch(r"20[2-3]\d", raw) or raw in ("1", "2", "3"): continue
+                if not _found(raw, bnums): warn(CT + f"Today in 3 '{x.get('k')}' quotes {raw}, which the story below does not; use the same figure in both")
+        cb = [float(x.replace(",", "")) for x in re.findall(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?", cot.get("body", "") + " " + " ".join(s.get("l", "") for s in cot.get("stats", [])))]
+        for s in cot.get("stats", []):
+            for raw in re.findall(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?", s.get("v", "")):
+                if not _found(raw, cb): warn(CT + f"Company of the Day stat '{s.get('v')}' is not in its text; state the same figure in the body")
+        # a panel's bars must show its headline figure on the same basis: a fall cannot be drawn as a rise
+        for pnl in C.get("p2", {}).get("gcc_panels", []) or []:
+            mv = re.match(r"\s*([+-])\s*\d", pnl.get("value", ""))
+            bars_ = pnl.get("bars") or []
+            if mv and len(bars_) == 2 and not any(b.get("neg") for b in bars_):
+                newer_bigger = bars_[0].get("w", 0) > bars_[1].get("w", 0)
+                if (mv.group(1) == "-") == newer_bigger:
+                    warn(CT + f"panel '{pnl.get('label')}' headline is {pnl.get('value')} but its two bars show the opposite move "
+                         f"('{bars_[0].get('t')}' vs '{bars_[1].get('t')}'); compare the same periods as the headline (year on year for a y/y figure)")
+        # the teaser looks ahead: every date in it is after this edition, and 'Tomorrow' means the next calendar day
+        TZ = "TEASER (fix, do not justify): "
+        WD = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+        for x in (C.get("p1", {}).get("extras_left") or []) + (C.get("p1", {}).get("extras_right") or []):
+            if x.get("type") != "teaser": continue
+            for m in re.finditer(r"(?:\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?\s+)?\b(\d{1,2})\.(\d{1,2})\b", x.get("text", "")):
+                try: d = dt.date(EDITION.year + (1 if int(m.group(3)) < EDITION.month - 6 else 0), int(m.group(3)), int(m.group(2)))
+                except ValueError: continue
+                if d <= EDITION: warn(TZ + f"teaser date {m.group(2)}.{m.group(3)} is not after this {EDITION:%d.%m} edition; a teaser shows what comes next")
+                elif x.get("label", "").strip().lower() == "tomorrow" and d != EDITION + dt.timedelta(days=1):
+                    warn(TZ + f"teaser says Tomorrow but its date is {d:%a %d.%m}; label it with the day ('Monday', 'Coming up') or use tomorrow's events")
+                if m.group(1) and WD[d.weekday()] != m.group(1).lower()[:3]:
+                    warn(TZ + f"teaser pairs {m.group(1)} with {d:%d.%m}, which is a {d:%A}")
+        # page 2 fill, measured by the builder (charts are images, so the PDF text alone cannot show these gaps)
+        try:
+            import os as _os
+            LY = json.load(open("layout.json")) if _os.path.exists("layout.json") else {}
+            q = LY.get("p2") if pdf and LY.get("pdf") == _os.path.basename(pdf) else None
+            if q:
+                DS = "DESKTOP STANDARD (fix, do not justify): "
+                d_ = q["cardB"] - q["cardA"]
+                if abs(d_) > 30:
+                    sh, lg = ("A", "B") if d_ > 0 else ("B", "A")
+                    warn(DS + f"page 2 card {sh} is {abs(d_):.0f} pt shorter than card {lg}, leaving a blank gap under it: give card {sh} "
+                         f"a second chart or a taller one (about h {abs(d_) / 72:.1f} in more), a tiles row, or an HTML extra (topmovers, levels, sectors) inside the card")
+                for side, g in (("left (GCC & MENA)", q["left_gap"]), ("right (Oil, Tech, Emerging Markets)", q["right_gap"])):
+                    if g > 45:
+                        warn(DS + f"page 2 {side} column ends {g:.0f} pt above the question band: add a new news bullet (about 35 pt each) "
+                             f"or a page-2 callout in p2.extras_{'left' if side.startswith('left') else 'right'} (topmovers, sectors, levels, storyline, gulf)")
+                if abs(d_) <= 30 and q["left_gap"] <= 45 and q["right_gap"] <= 45: OK.append("page 2 filled (cards level, columns reach the question band)")
+        except Exception as e: warn(f"page 2 fill check skipped: {e}")
+except Exception as e: warn(f"story discipline checks skipped: {e}")
 if pdf:
     try:
         bx = subprocess.run(["pdftotext", "-f", "1", "-l", "1", "-bbox", pdf, "-"], capture_output=True, text=True).stdout

@@ -265,6 +265,18 @@ def send():
         old_l = open(lp, encoding="utf-8").read().splitlines() if os.path.exists(lp) else []
         old_l = [l for l in old_l if not l.startswith(led[:10])]
         open(lp, "w", encoding="utf-8").write("\n".join((old_l + [led])[-30:]) + "\n")
+    # newsletter yield memory: which newsletters gave stories to the brief, so the writer's reading order learns
+    stl = []
+    for l in sec.get("SOURCES", "").splitlines():
+        f = [x.strip() for x in l.split("|")]
+        u = re.search(r"used\s*=\s*(\d+)", l)
+        if len(f) >= 3 and f[1].upper() in ("READ", "SKIMMED"):
+            stl.append(f"{STAMP.replace('.', '-')} | {f[2]} | {f[1].upper()} | {u.group(1) if u else 0}")
+    if stl:
+        sp = os.path.join(HERE, "sent", "newsletter_stats.txt")
+        old_s = open(sp, encoding="utf-8").read().splitlines() if os.path.exists(sp) else []
+        old_s = [l for l in old_s if not l.startswith(STAMP.replace('.', '-'))]
+        open(sp, "w", encoding="utf-8").write("\n".join((old_s + stl)[-1200:]) + "\n")
     print("sent", MODE, pages, "pages", kb, "KB", lay)
     return 0
 

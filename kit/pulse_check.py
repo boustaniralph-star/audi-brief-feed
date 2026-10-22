@@ -54,9 +54,14 @@ for name, al in ALIAS.items():
     for a in al:
         for m in re.finditer(re.escape(a) + r"[^0-9%]{0,22}?(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d{2,}\.\d+)(?![\d,]*%)", alltext):
             v = num(m.group(1))
+            if re.fullmatch(r"(\d{1,2})\.(\d{2})", m.group(1)) and int(m.group(1)[-2:]) <= 12: continue  # a DD.MM date
             if abs(v - it["close"]) / max(abs(it["close"]), 1e-9) > 0.004 and abs(v - it["close"]) > 0.015:
                 # allow values that are clearly another reference (prior close within 3%)
-                warn(f"text quotes {a} {m.group(1)} but market_data.json close is {it['close']:,.2f}")
+                if today_d >= dt.date(2026, 10, 23):
+                    warn(f"CONTRADICTION (fix, do not justify): text quotes {a} {m.group(1)} but the official close is {it['close']:,.2f}; "
+                         "quote every market price at the same point (the close in market_data.json) everywhere, and put a later move in words")
+                else:
+                    warn(f"text quotes {a} {m.group(1)} but market_data.json close is {it['close']:,.2f}")
                 bad += 1
 if not bad: OK.append("quoted index/commodity levels match market_data.json")
 for y in ("US 10Y yield", "US 2Y yield", "US 30Y yield"):
@@ -298,6 +303,39 @@ try:
                 if not d0 <= e.get("date", "") <= d1: warn(SC + f"hero event '{e.get('label')}' date {e.get('date')} is outside the chart window")
                 if len(e.get("label", "")) > 22: warn(SC + f"hero event label '{e.get('label')}' is too long (max 22 characters)")
 except Exception as e: warn(f"story chart checks skipped: {e}")
+# DIFFERENT CHARTS (Ralph 22.10.2026, from 23.10): two charts in one card never show the same thing twice
+try:
+    if today_d >= dt.date(2026, 10, 23):
+        IDX = ["S&P 500", "Nasdaq Composite", "Dow Jones", "STOXX 600", "DAX", "CAC 40", "FTSE 100", "Nikkei 225", "Hang Seng",
+               "Sensex", "CSI 300", "Tadawul TASI"]
+        LONG = {"Nasdaq": "Nasdaq Composite", "Dow": "Dow Jones", "Nikkei": "Nikkei 225", "TASI": "Tadawul TASI"}
+        YLD = ["US 2Y yield", "US 10Y yield", "US 30Y yield"]
+        def shows(x):
+            """(instrument, measure) pairs a chart draws."""
+            ty, nm = x.get("type"), [LONG.get(n, n) for n in x.get("names", []) or []]
+            per = {"index_board": ("day",), "ytd": ("ytd", "day"), "week": ("week", "day"), "month": ("month", "day"),
+                   "scorecard": ("week", "ytd")}
+            if ty in per: return {(i, m) for i in IDX for m in per[ty]}
+            if ty == "heatmap": return {(i, m) for i in nm for m in ("day", "week", "month")}
+            if ty in ("multiples", "rebased"): return {(i, "trend") for i in nm}
+            if ty == "commodities": return {(i, m) for i in ("Brent", "WTI", "Gold") for m in ("ytd", "day")}
+            if ty in ("rates", "rates_trend", "curve_compare"): return {(i, "level") for i in YLD}
+            if ty == "storyline": return {(x.get("name", ""), "trend")}
+            if ty == "movers": return {(r.get("name"), "day") for r in x.get("rows", []) or []}
+            return set()
+        for ci, c in enumerate(C.get("p2", {}).get("cards", [])[:2]):
+            ch = [x for x in c.get("charts", []) if shows(x)]
+            for a_ in range(len(ch)):
+                for b_ in range(a_ + 1, len(ch)):
+                    A_, B_ = shows(ch[a_]), shows(ch[b_])
+                    same = A_ & B_ if ci == 0 else {i for i, _ in A_} & {i for i, _ in B_}
+                    if len(same) >= (3 if ci == 0 else 2):
+                        ex = sorted({s if isinstance(s, str) else s[0] for s in same})[:3]
+                        warn("STORY CHARTS (fix, do not justify): " + f"card {'AB'[ci]} draws the same data twice ({ch[a_]['type']} and {ch[b_]['type']}: "
+                             f"{', '.join(ex)}); pair charts that show different things (one index-bar chart with movers, multiples, "
+                             "sectors or topmovers in card A; in card B no instrument in two charts)")
+except Exception as e: warn(f"card chart check skipped: {e}")
+
 # panels: a fall, loss or negative figure must be drawn as one (neg: true), whatever the date
 try:
     NEGW = re.compile(r"(?<![\w.])-\s?\d|\b(fall|fell|falls|drop|decline|shrink|contract|contraction|loss|deficit|down)\b", re.I)
@@ -363,6 +401,21 @@ if facts:
                 warn("FACTS (fix, do not justify): '" + f[0] + "' cites a newsletter tracking link; open the source page itself and cite its own address")
             elif any(n in src for n in NL):
                 warn("FACTS (fix, do not justify): '" + f[0] + "' is verified partly by a newsletter (" + f[2][:50] + "); confirm every figure and date in it on a primary or wire source, or cut what you cannot")
+        if today_d >= dt.date(2026, 10, 23):
+            FX5 = "FACTS (fix, do not justify): "
+            for f in FL:
+                s5 = f[2].lower()
+                if "http" not in s5 and "market_data.json" not in s5 and "official close" not in s5:
+                    warn(FX5 + f"'{f[0]}' names no page ({f[2][:40]}); cite the address of the page that confirms it (only market prices may cite market_data.json or 'official close')")
+                if re.search(r"single[- ]source|one source|partial", s5):
+                    warn(FX5 + f"'{f[0]}' rests on a single or partial source; confirm it on a second independent source or drop it")
+            joined = " ".join(f[0].lower() + " " + f[1].lower() for f in FL)
+            nd5 = [x for x in (C.get("p1", {}).get("extras_left") or []) if x.get("type") == "numday"]
+            if nd5 and "number" not in joined and nd5[0].get("value", "").lower() not in joined:
+                warn(FX5 + "no facts.txt line for the Number of the day: log it with its source page")
+            for pnl in C.get("p2", {}).get("gcc_panels", []) or []:
+                if pnl.get("label", "").lower().rstrip(".") not in joined:
+                    warn(FX5 + f"no facts.txt line for the panel '{pnl.get('label')}': log its figures with their source page (lead-in = the panel label)")
         if FL and not miss: OK.append(f"{len(FL)} key figures verified")
     except Exception as e: warn(f"facts check skipped: {e}")
 # STORY DISCIPLINE (Ralph, 21.10.2026): one story appears once, figures never contradict, the teaser is truly ahead,
@@ -516,6 +569,47 @@ try:
                              "say what it shows, or set the chart's \"days\" (calendar days back) to match")
         except Exception as e: warn(f"page 2 fill check skipped: {e}")
 except Exception as e: warn(f"story discipline checks skipped: {e}")
+# MARKET PRICES IN AT MOST TWO PLACES (Ralph 22.10.2026, from 23.10)
+try:
+    if today_d >= dt.date(2026, 10, 23):
+        places = []
+        for x in C.get("top3", []) or []: places.append(("Today in 3", x.get("k", "") + " " + x.get("t", "")))
+        places.append(("Company of the Day", C.get("cotd", {}).get("body", "")))
+        for pg in ("p1", "p2"):
+            for side in ("left", "right"):
+                for sec_ in C.get(pg, {}).get(side, []) or []:
+                    for b in sec_[1]: places.append((f"'{b[0]}'", b[0] + " " + b[1]))
+            for side in ("extras_left", "extras_right"):
+                for x in C.get(pg, {}).get(side, []) or []:
+                    if x.get("type") in ("numday", "gulf", "loop"): places.append((x.get("label", x["type"]), x.get("value", "") + " " + x.get("text", "")))
+        for pnl in C.get("p2", {}).get("gcc_panels", []) or []: places.append((f"panel '{pnl.get('label')}'", pnl.get("label", "") + " " + pnl.get("caption", "")))
+        for ci, c in enumerate(C.get("p2", {}).get("cards", [])[:2]): places.append((f"card {'AB'[ci]} title", c.get("title", "")))
+        places.append(("question band", C.get("watch", {}).get("text", "")))
+        INSTR = {"Brent": r"\bBrent\b", "WTI": r"\bWTI\b", "Gold": r"\b[Gg]old\b", "Dollar index": r"\b[Dd]ollar [Ii]ndex\b",
+                 "TASI": r"\bTASI\b", "S&P 500": r"S&P 500", "Nasdaq": r"\bNasdaq\b(?! *:)", "Dow": r"\bDow\b", "STOXX 600": r"STOXX 600",
+                 "Nikkei": r"\bNikkei\b", "Hang Seng": r"Hang Seng", "Sensex": r"\bSensex\b", "US 10-year yield": r"10-year"}
+        MKT = {"Brent": "Brent", "WTI": "WTI", "Gold": "Gold", "Dollar index": "Dollar Index", "TASI": "Tadawul TASI", "S&P 500": "S&P 500",
+               "Nasdaq": "Nasdaq Composite", "Dow": "Dow Jones", "STOXX 600": "STOXX 600", "Nikkei": "Nikkei 225", "Hang Seng": "Hang Seng", "Sensex": "Sensex"}
+        for nm_, rx in INSTR.items():
+            it_ = items.get(MKT.get(nm_, ""))
+            if it_:
+                # a price level quoted for the instrument must be the official close (the same point in time everywhere)
+                for lab, tx in places:
+                    for m_ in re.finditer(rx + r"((?:[^.;]|\.(?=\d)){0,40}?)(?:USD\s*)?(?<![\d.,])(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d{2,}\.\d+|\d{3,})(?![\d,.]*\s*%)", tx):
+                        raw_, v_ = m_.group(2), float(m_.group(2).replace(",", ""))
+                        if re.fullmatch(r"20[2-3]\d", raw_) or re.fullmatch(r"(\d{1,2})\.(\d{2})", raw_) and int(raw_[-2:]) <= 12:
+                            continue  # a year or a DD.MM date
+                        if re.search(r"\b(above|below|over|under|past|tops?|topped|breaks?|broke|crosse?[sd]?|through|back to|nears?)\W+(?:USD\s*)?$", m_.group(1)) and v_ % 10 == 0:
+                            continue  # a round threshold ("above USD 100"), not a quote
+                        if v_ > it_["close"] * .5 and abs(v_ / it_["close"] - 1) > .005:
+                            warn(f"CONTRADICTION (fix, do not justify): {lab} quotes {nm_} at {raw_} but the official close is {it_['close']:,.2f}; "
+                                 "quote every market price at the same point (the close) everywhere, and put a later move in words")
+            hit_ = [lab for lab, tx in places if re.search(rx + r"[^.;]{0,30}?[-+]?\d", tx)]
+            if len(hit_) > 2:
+                warn("REPETITION (fix: one story appears once; give the space to a new story): " + f"{nm_} is quoted in {len(hit_)} places "
+                     f"({', '.join(hit_[:5])}); a market price appears in at most two (its section and one hook or card title)")
+except Exception as e: warn(f"market price places check skipped: {e}")
+
 if pdf:
     try:
         bx = subprocess.run(["pdftotext", "-f", "1", "-l", "1", "-bbox", pdf, "-"], capture_output=True, text=True).stdout

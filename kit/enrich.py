@@ -159,13 +159,15 @@ def _pick_rows(pts, daily_tail=8):
     return sorted(weekly.values()) + tail
 
 
-def auto_hero(content, md, get=get, now=None, closes=None):
+def auto_hero(content, md, get=get, now=None, closes=None, labels=None):
     """Returns (hero, content) with a line hero and its caption, or (None, None)."""
     cot = content.get("cotd", {})
     res = resolve(cot.get("ticker"))
     if not res:
         return None, None
     sym, peers = res
+    if labels:
+        peers = [(p[0], l) for p, l in zip(peers, labels)]
     now = now or int(time.time())
     if closes:   # [[date, close], ...] x3 (company, benchmark 1, benchmark 2), e.g. from Robinhood daily historicals
         load = lambda s: sorted((dt.date.fromisoformat(d[:10]), float(c)) for d, c in s)
@@ -263,6 +265,9 @@ USAGE = """Writer usage (run in /tmp/brief before building):
   python3 enrich.py hero content_v2.json hero_data.json --closes company.json bench1.json bench2.json
       same, from daily closes you saved yourself (e.g. Robinhood get_equity_historicals, interval day, span year),
       each file [[\"YYYY-MM-DD\", close], ...]; benchmark names stay Nasdaq / S&P 500 unless you edit them after.
+  python3 enrich.py hero content_v2.json hero_data.json --tadawul
+      same for a Tadawul listing (cotd.ticker "Tadawul: 1120"), from the repo's tadawul_series.json (refreshed daily on
+      GitHub): the company against the Saudi top 30 (equal weight) and the S&P 500. No market-data tool needed.
   python3 enrich.py scrub content_v2.json hero_data.json
       removes data-provider names (Robinhood, IBKR, Yahoo) from chart captions, subtitles, notes and panel captions.
   python3 enrich.py ytd content_v2.json market_data.json
@@ -270,6 +275,22 @@ USAGE = """Writer usage (run in /tmp/brief before building):
 
 
 def _cli(a):
+    if len(a) >= 3 and a[0] == "hero" and "--tadawul" in a:
+        C = json.load(open(a[1], encoding="utf-8"))
+        m = re.search(r"Tadawul\s*:\s*(\d{4})", C.get("cotd", {}).get("ticker", ""))
+        if not m:
+            print("--tadawul needs cotd.ticker like 'Tadawul: 1120'"); return 2
+        T, S = _repo_json("tadawul_series.json"), _repo_json("series.json")
+        st = T.get("stocks", {}).get(m.group(1))
+        if not st:
+            print(f"Tadawul {m.group(1)} is not in tadawul_series.json; use the guidance hero (results) or IBKR closes"); return 2
+        closes = [sorted(st["closes"].items()), sorted(T.get("top30", {}).items()), sorted(S.get("S&P 500", {}).items())]
+        h, C2 = auto_hero(C, {}, closes=closes, labels=["Saudi top 30", "S&P 500"])
+        if not h:
+            print("no hero: fewer than 120 daily closes in tadawul_series.json; use the guidance hero (results)"); return 2
+        json.dump(h, open(a[2], "w", encoding="utf-8"), ensure_ascii=False)
+        json.dump(C2, open(a[1], "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        print("hero:", h["names"], len(h["rows"]), "points |", C2["cotd"]["chart_title"]); return 0
     if len(a) >= 3 and a[0] == "hero":
         C = json.load(open(a[1], encoding="utf-8-sig"))
         closes = [json.load(open(f, encoding="utf-8-sig")) for f in a[a.index("--closes") + 1:a.index("--closes") + 4]] if "--closes" in a else None
@@ -298,6 +319,15 @@ def _cli(a):
             print(f"{i:2d}. {n} (tier {tier}; read {reads}x, gave {used} stories)")
         return 0
     print(USAGE); return 1
+
+
+def _repo_json(name):
+    """A data file from the working folder, else from the repository (raw GitHub)."""
+    for p in (name, os.path.join(os.path.dirname(os.path.abspath(__file__)), name),
+              os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", name)):
+        if os.path.exists(p):
+            return json.load(open(p, encoding="utf-8-sig"))
+    return json.loads(get("https://raw.githubusercontent.com/boustaniralph-star/audi-brief-feed/main/" + name))
 
 
 def _newsletter_rows(path=None):

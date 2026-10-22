@@ -45,6 +45,10 @@ jobs:
       - name: Build series.json
         id: series
         run: python3 make_series.py
+      - name: Tadawul prices
+        id: tadawul
+        continue-on-error: true
+        run: python3 fetch_tadawul.py
       - name: Commit
         # always() so the heartbeat is recorded even when the fetch fails; market data is only
         # committed when both data steps succeeded
@@ -54,6 +58,7 @@ jobs:
           git config user.email "market-data-bot@users.noreply.github.com"
           if [ -f heartbeat.log ]; then git add heartbeat.log; fi
           msg="heartbeat $(date -u +%Y-%m-%d)"
+          if [ "${{ steps.tadawul.outcome }}" = success ] && [ -f tadawul_series.json ]; then git add tadawul_series.json; fi
           if [ "${{ steps.fetch.outcome }}" = success ] && [ "${{ steps.series.outcome }}" = success ]; then
             git add market_data.json series.json market_data/
             msg="market data $(date -u +%Y-%m-%d)"

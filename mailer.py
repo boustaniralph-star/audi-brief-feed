@@ -106,6 +106,25 @@ def stale_feed_watchdog():
     print("stale feed alert sent")
 
 
+THREAD_NAMES = {}  # thread id -> newsletter name as in kit/newsletters.txt (filled by newsletter_coverage)
+
+
+def canonical_newsletter(thread_id, written):
+    """The newsletters.txt name for a SOURCES line: by its thread's sender when the inbox was read, else by matching
+    the name the writer typed ("Bloomberg Evening" -> "Bloomberg", "Exec Sum" -> "Exec Sum - Litquidity")."""
+    if thread_id.lower() in THREAD_NAMES:
+        return THREAD_NAMES[thread_id.lower()]
+    try:
+        sys.path.insert(0, os.path.join(HERE, "kit"))
+        import enrich
+        names = list(dict.fromkeys(n for n, _ in enrich.newsletters()))
+    except Exception:
+        return written
+    w = re.sub(r"[^a-z ]", " ", written.lower()).split()
+    best = max(names, key=lambda n: len(set(w) & set(re.sub(r"[^a-z ]", " ", n.lower()).split()) - {"the", "daily", "news"}), default=written)
+    return best if set(w) & set(re.sub(r"[^a-z ]", " ", best.lower()).split()) - {"the", "daily", "news"} else written
+
+
 def newsletter_coverage(sources):
     """Check the writer's reading against the inbox: every newsletter (kit/newsletters.txt) that arrived in the 24
     hours before the package was sent, versus the thread ids the package marks READ. Returns (read, arrived, missed
@@ -137,6 +156,7 @@ def newsletter_coverage(sources):
         M.logout()
         read = {l.split("|")[0].strip().lower() for l in sources.splitlines() if "|" in l and "READ" in l.split("|")[1].upper()}
         missed = sorted({arrived[t] for t in arrived if t not in read})
+        THREAD_NAMES.update(arrived)
         return len([t for t in arrived if t in read]), len(arrived), missed
     except Exception as e:
         print("newsletter check skipped:", type(e).__name__, e)
@@ -271,7 +291,7 @@ def send():
         f = [x.strip() for x in l.split("|")]
         u = re.search(r"used\s*=\s*(\d+)", l)
         if len(f) >= 3 and f[1].upper() in ("READ", "SKIMMED"):
-            stl.append(f"{STAMP.replace('.', '-')} | {f[2]} | {f[1].upper()} | {u.group(1) if u else 0}")
+            stl.append(f"{STAMP.replace('.', '-')} | {canonical_newsletter(f[0], f[2])} | {f[1].upper()} | {u.group(1) if u else 0}")
     if stl:
         sp = os.path.join(HERE, "sent", "newsletter_stats.txt")
         old_s = open(sp, encoding="utf-8").read().splitlines() if os.path.exists(sp) else []

@@ -16,6 +16,74 @@ F = os.path.expanduser("~/.fonts/")
 for f in os.listdir(F):
     fm.fontManager.addfont(F + f)
 import extras_v2 as X
+
+# ------------------------------------------------------------------ labels never sit on a line or a bar
+# Every chart (here and in extras_v2) is saved through plt.savefig, so this pass runs on all of them: a label whose
+# box crosses a data line or a bar is moved up or down (offset labels) to the nearest clear spot, and if no spot is
+# clear it gets a white backing so it stays readable. Gridlines are ignored (faint by design).
+from matplotlib.path import Path as _Path
+from matplotlib.text import Annotation as _Ann
+DECLUTTER = {"moved": 0, "backed": 0}
+WINDOWS = {}  # trend charts: how many sessions each one actually shows (its heading must not claim another window)
+
+def _on_grid(ax, bb):
+    """True when a label box crosses a gridline (labels are not moved for these, only backed in white)."""
+    for ln in ax.get_xgridlines() + ax.get_ygridlines():
+        if ln.get_visible() and _Path(ln.get_transform().transform(ln.get_xydata())).intersects_bbox(bb, filled=False):
+            return True
+    return False
+
+def _hits(ax, bb, r):
+    for ln in ax.get_lines():
+        if not ln.get_visible() or ln in ax.get_xgridlines() or ln in ax.get_ygridlines() or ln.get_linewidth() < .5:
+            continue
+        xy = ln.get_transform().transform(ln.get_xydata())
+        if len(xy) == 1:
+            if bb.contains(*xy[0]): return True
+        elif _Path(xy).intersects_bbox(bb, filled=False):
+            return True
+    for cont in ax.containers:
+        for p in getattr(cont, "patches", []):
+            if p.get_visible() and bb.overlaps(p.get_window_extent(r)): return True
+    return False
+
+def _declutter(fig):
+    from matplotlib.transforms import Bbox
+    fig.canvas.draw(); r = fig.canvas.get_renderer()
+    for ax in fig.axes:
+        others = lambda me: [o.get_window_extent(r) for o in ax.texts if o is not me and o.get_visible() and o.get_text().strip()]
+        for t in list(ax.texts):
+            if not t.get_visible() or not t.get_text().strip() or t.get_bbox_patch() is not None:
+                continue
+            shrink = lambda b: Bbox.from_extents(b.x0 + 1, b.y0 + 1, b.x1 - 1, b.y1 - 1)
+            if not _hits(ax, shrink(t.get_window_extent(r)), r):
+                if ax.yaxis._major_tick_kw.get("gridOn") or ax.xaxis._major_tick_kw.get("gridOn") or ax.get_ygridlines():
+                    if _on_grid(ax, shrink(t.get_window_extent(r))):
+                        t.set_bbox(dict(facecolor="white", edgecolor="none", pad=.8, alpha=.92)); t.set_zorder(max(t.get_zorder(), 6))
+                        DECLUTTER["backed"] += 1
+                continue
+            fixed = False
+            if isinstance(t, _Ann) and t.anncoords == "offset points":
+                x0, y0 = t.xyann
+                for dy in (6, -6, 9, -9, 12, -12, 16, -16, 20, -20):
+                    t.xyann = (x0, y0 + dy)
+                    bb = shrink(t.get_window_extent(r))
+                    if not _hits(ax, bb, r) and not any(bb.overlaps(o) for o in others(t)) and fig.bbox.contains(bb.x1, bb.y1) and fig.bbox.contains(bb.x0, bb.y0):
+                        fixed = True; DECLUTTER["moved"] += 1; break
+                if not fixed:
+                    t.xyann = (x0, y0)
+            if not fixed:
+                t.set_bbox(dict(facecolor="white", edgecolor="none", pad=.8, alpha=.92)); t.set_zorder(max(t.get_zorder(), 6))
+                DECLUTTER["backed"] += 1
+
+_savefig = plt.savefig
+def _savefig_clear(*a, **k):
+    try:
+        _declutter(plt.gcf())
+    except Exception as e:
+        print("declutter skipped:", type(e).__name__, e)
+    return _savefig(*a, **k)
+plt.savefig = X.plt.savefig = _savefig_clear
 X.install_overlap_guard()
 NAVY, STEEL, SILVER = "#1B2A4A", "#4A6FA5", "#8A9BB0"
 UP, DN, GRID, MUTE, MONO = "#2F8F6B", "#C0453A", "#E3E8EF", "#6B7A90", "IBM Plex Mono"
@@ -209,7 +277,8 @@ def commodities(md_items, out, w=3.45, h=1.1):
     ax.set_yticklabels([r[0] for r in rows], fontsize=7.2, color=NAVY)
     ax.set_xlim(-vmax * .4, vmax * 1.5)
     for y, r in zip(ys, rows):
-        ax.text(r[1] + vmax * .03, y, f"{r[1]:+.1f}%", va="center", fontsize=6.6, family=MONO, color=NAVY)
+        ax.text(r[1] + (vmax * .03 if r[1] >= 0 else -vmax * .03), y, f"{r[1]:+.1f}%", va="center", ha="left" if r[1] >= 0 else "right",
+                fontsize=6.6, family=MONO, color=NAVY)
         ax.text(1.0, y, f"{r[2]:+.2f}%", transform=ax.get_yaxis_transform(), va="center", ha="right",
                 fontsize=6.6, family=MONO, color=UP if r[2] >= 0 else DN)
     ax.text(1.0, len(rows) - .45, "DAY", transform=ax.get_yaxis_transform(), ha="right", fontsize=6, color=MUTE,
@@ -363,7 +432,7 @@ def rebased(names, out, w=3.45, h=1.5, days=11):
         ax.annotate(f"{SHORT.get(e[1], e[1])} {e[0]-100:+.1f}%", (len(rb) - 1, e[0]), xytext=(6, p - shift - e[0] * ppu),
                     textcoords="offset points", va="center", fontsize=7, color=e[2], fontweight="bold", zorder=6,
                     bbox=dict(facecolor="white", edgecolor="none", pad=.8))
-    ax.axhline(100, color=SILVER, lw=.6, ls=(0, (2, 2)))
+    ax.plot([0, len(xs) - 1], [100, 100], color=SILVER, lw=.6, ls=(0, (2, 2)), zorder=1)
     ax.set_xlim(-.2, len(xs) + 2.6)
     ax.yaxis.grid(True, color=GRID, lw=.6); ax.set_axisbelow(True); clean(ax)
     mono_ticks(ax); ax.tick_params(axis="y", labelsize=6.6)
@@ -519,11 +588,13 @@ def main(content_p, md_p, hero_p, out_pdf):
             elif t == "month":
                 bars(M, "chgM", fn, h=spec.get("h", 2.15), day_col=True, highlight=spec.get("highlight"))
             elif t == "rates_trend":
-                rates_trend(fn, h=spec.get("h", 1.55))
+                rates_trend(fn, h=spec.get("h", 1.55), days=spec.get("days", 11))
+                WINDOWS[f"c{ci}_{k}"] = (spec, len(_ser("US 10Y yield", _tgt(spec.get("days", 11)))[0]))
             elif t == "multiples":
                 multiples(spec["names"], fn, h=spec.get("h", 1.5))
             elif t == "rebased":
-                rebased(spec["names"], fn, h=spec.get("h", 1.5))
+                rebased(spec["names"], fn, h=spec.get("h", 1.5), days=spec.get("days", 11))
+                WINDOWS[f"c{ci}_{k}"] = (spec, len(_ser(spec["names"][0], _tgt(spec.get("days", 11)))[0]))
             elif t == "heatmap":
                 heatmap(spec["names"], fn, h=spec.get("h", 1.9))
             elif t == "curve_compare":
@@ -607,7 +678,10 @@ def main(content_p, md_p, hero_p, out_pdf):
     rendered = HTML(filename="brief_v2.html", base_url=os.getcwd()).render()
     rendered.write_pdf(out_pdf)
     print("wrote", out_pdf)
+    if DECLUTTER["moved"] or DECLUTTER["backed"]:
+        print(f"labels cleared off chart lines: {DECLUTTER['moved']} moved, {DECLUTTER['backed']} given a white backing")
     lay = measure(rendered, out_pdf)
+    lay["windows"] = {k: {"type": s["type"], "mini": s.get("mini", ""), "sessions": n} for k, (s, n) in WINDOWS.items()}
     json.dump(lay, open("layout.json", "w"))
     if lay.get("p2"):
         q = lay["p2"]

@@ -505,6 +505,15 @@ try:
                         warn(DS + f"page 2 {side} column ends {g:.0f} pt above the question band: add a new news bullet (about 35 pt each) "
                              f"or a page-2 callout in p2.extras_{'left' if side.startswith('left') else 'right'} (topmovers, sectors, levels, storyline, gulf)")
                 if abs(d_) <= 30 and q["left_gap"] <= 45 and q["right_gap"] <= 45: OK.append("page 2 filled (cards level, columns reach the question band)")
+            # a trend chart's heading names the window it really shows ("last 30 sessions" over 7 sessions is wrong)
+            for key, w_ in (LY.get("windows") or {}).items() if pdf and LY.get("pdf") == _os.path.basename(pdf) else []:
+                m_ = re.search(r"(\d+)\s*(sessions|trading days|days|weeks|months)", w_.get("mini", ""), re.I)
+                if m_:
+                    n_, unit = int(m_.group(1)), m_.group(2).lower()
+                    approx = {"sessions": n_, "trading days": n_, "days": n_ * 5 / 7, "weeks": n_ * 5, "months": n_ * 21}[unit]
+                    if abs(approx - w_["sessions"]) > max(2, .25 * w_["sessions"]):
+                        warn("STORY CHARTS (fix, do not justify): " + f"{w_['type']} heading '{w_['mini']}' but the chart shows {w_['sessions']} sessions; "
+                             "say what it shows, or set the chart's \"days\" (calendar days back) to match")
         except Exception as e: warn(f"page 2 fill check skipped: {e}")
 except Exception as e: warn(f"story discipline checks skipped: {e}")
 if pdf:

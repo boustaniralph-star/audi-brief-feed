@@ -659,9 +659,9 @@ def main(content_p, md_p, hero_p, out_pdf):
     page1 = f'''<div class="page">
  <div class="mast"><div><img class="wm" src="wordmark.png"><div class="kicker">Daily Brief</div><div class="date">{D}</div></div><img class="circ" src="circles.png"></div>
  {top3}
- <div class="hero"><div class="kicker">Company of the Day</div>
-  <h1>{html.escape(cot["name"])} <small>{html.escape(cot["ticker"])}</small></h1>
-  <div class="herogrid"><div class="herotext">{nums(cot["body"])}</div><div class="stats">{stats}</div></div>
+ <div class="hero">
+  <div class="herogrid"><div class="herotext"><div class="kicker">Company of the Day</div>
+  <h1>{html.escape(cot["name"])} <small>{html.escape(cot["ticker"])}</small></h1><div class="hbody">{nums(cot["body"])}</div></div><div class="stats">{stats}</div></div>
   {chartblock}
   <div class="catalyst"><b>Next catalyst</b>{nums(cot["catalyst"])}</div>{means}</div>
  <div class="cols"><div class="col">{"".join(sec(t, i) for t, i in p1["left"])}{X.render_extras(p1.get("extras_left"))}</div><div class="col">{"".join(sec(t, i) for t, i in p1["right"])}{X.render_extras(p1.get("extras_right"))}</div></div>
@@ -706,6 +706,15 @@ def measure(doc, pdf_name):
         for c in getattr(b, "children", []) or []:
             yield from walk(c)
     out = {"pdf": os.path.basename(pdf_name)}
+    b1 = list(walk(doc.pages[0]._page_box))
+    body = next((b for b in b1 if "hbody" in cls(b)), None)
+    sts = next((b for b in b1 if "stats" in cls(b)), None)
+    if body is not None and sts is not None:
+        lines = [c for c in walk(body) if type(c).__name__ == "LineBox"]
+        text_end = max((c.position_y + c.height for c in lines), default=body.position_y + body.height)
+        kids = [c for c in sts.children if "stat" in cls(c)]
+        need = sum(c.margin_height() for c in kids) if kids else 0   # boxes at their natural height
+        out["p1"] = {"cotd_text_short_by": round((sts.position_y + need - text_end) * .75, 1)}
     if len(doc.pages) < 2:
         return out
     boxes = list(walk(doc.pages[1]._page_box))

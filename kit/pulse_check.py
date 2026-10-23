@@ -584,6 +584,10 @@ try:
             import os as _os
             LY = json.load(open("layout.json")) if _os.path.exists("layout.json") else {}
             q = LY.get("p2") if pdf and LY.get("pdf") == _os.path.basename(pdf) else None
+            q1 = LY.get("p1") if pdf and LY.get("pdf") == _os.path.basename(pdf) else None
+            if q1 and q1.get("cotd_text_short_by", 0) > 6:
+                warn("DESKTOP STANDARD (fix, do not justify): " + f"the Company of the Day text ends {q1['cotd_text_short_by']:.0f} pt above the bottom of its stat boxes, "
+                     "leaving a gap before the chart: add a sentence of news (what happened, why it matters, a figure), about 12 pt per line")
             if q:
                 DS = "DESKTOP STANDARD (fix, do not justify): "
                 d_ = q["cardB"] - q["cardA"]

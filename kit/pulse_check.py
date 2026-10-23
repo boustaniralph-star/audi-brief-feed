@@ -294,10 +294,19 @@ try:
             if len(x.get("k", "")) > 30: warn(H3 + f"Today in 3 headline '{x.get('k')}' is too long (max 30 characters)")
             if len(x.get("t", "")) > 110: warn(H3 + f"Today in 3 line under '{x.get('k')}' is too long (max 110 characters)")
             if not re.search(r"\d", x.get("t", "")): warn(H3 + f"Today in 3 line under '{x.get('k')}' has no figure")
-        if not C.get("cotd", {}).get("means"): warn(H3 + "cotd.means (For Gulf investors line) is missing")
+        if today_d < dt.date(2026, 10, 24) and not C.get("cotd", {}).get("means"): warn(H3 + "cotd.means (For Gulf investors line) is missing")
+        if today_d >= dt.date(2026, 10, 24):
+            # retired by Ralph on 23.10.2026: no "For Gulf investors" line, in the PDF or the text
+            if C.get("cotd", {}).get("means") or (txt and "for gulf investors" in open(txt, encoding="utf-8").read().lower()):
+                warn(H3 + "the 'For Gulf investors' line is retired: remove cotd.means and the line from the text")
         nd = [x for side in ("extras_left", "extras_right") for x in C.get("p1", {}).get(side, []) or [] if x.get("type") == "numday"]
         if len(nd) != 1: warn(H3 + f"page 1 needs exactly one numday callout (has {len(nd)})")
         elif len(nd[0].get("value", "")) > 12: warn(H3 + f"Number of the day '{nd[0]['value']}' is too long (max 12 characters)")
+        if nd and today_d >= dt.date(2026, 10, 24):
+            # the number must say exactly what it measures: who (named), what, which period, against what
+            vague = re.findall(r"\b(?:some|several|many|various|a (?:group|handful) of|(?:two|three|four|five|six|seven|eight|nine|ten|\d+) (?:big|large|major|leading|top|listed) \w+)\b", nd[0].get("text", ""), re.I)
+            if vague:
+                warn(H3 + f"Number of the day '{nd[0].get('value')} - {nd[0].get('text')}' is vague ({', '.join(vague)}): name exactly who or what it measures (e.g. 'Al Rajhi, SNB and four other banks' or the single company), the period and the comparison")
         dull = {"close.", "closes.", "friday.", "monday.", "tuesday.", "wednesday.", "thursday.", "saturday.", "sunday.", "week.", "asia.", "rates.", "chips.", "gap.", "india.", "china."}
         leads = [b[0] for pg in ("p1", "p2") for side in ("left", "right") for s in C.get(pg, {}).get(side, []) or [] for b in s[1]]
         flat = [l for l in leads if l.strip().lower() in dull or len(l.split()) < 2]
@@ -598,6 +607,26 @@ try:
                              "say what it shows, or set the chart's \"days\" (calendar days back) to match")
         except Exception as e: warn(f"page 2 fill check skipped: {e}")
 except Exception as e: warn(f"story discipline checks skipped: {e}")
+# CAUSE (Ralph, 23.10.2026): "SNB -5.1% as Houthi attacks hit" tied one bank's fall to a market-wide event no source
+# linked it to. A move may be explained only by the reason a named source gives for that same security.
+try:
+    if today_d >= dt.date(2026, 10, 24):
+        _units = [("Today in 3 '" + x.get("k", "") + "'", x.get("k", "") + " " + x.get("t", "")) for x in C.get("top3", []) or []]
+        _units += [(f"'{b[0]}'", b[0] + " " + b[1]) for pg in ("p1", "p2") for side in ("left", "right") for s_ in C.get(pg, {}).get(side, []) or [] for b in s_[1]]
+        _caused = set()
+        if facts:
+            for l_ in open(facts, encoding="utf-8").read().splitlines():
+                f_ = [x.strip() for x in l_.split("|")]
+                if len(f_) >= 3 and re.search(r"\bcause\s*:", " ".join(f_[1:]), re.I) and "http" in l_:
+                    _caused.add(f_[0].lower().rstrip("."))
+        _ev = r"(?:attacks?|strikes?|war|missiles?|drones?|Houthis?|Iran|tensions?|fears?|conflict|sanctions?|tariffs?|riots?|unrest)"
+        for lab, tx in _units:
+            if lab.strip("'").split("'")[-1].lower().rstrip(".") in _caused or any(c in lab.lower() for c in _caused if c):
+                continue
+            for m in re.finditer(r"[-+]?\d+(?:\.\d+)?%[^.;]{0,25}?\b(as|amid|after|on|following|because of|due to)\b[^.;]{0,40}?\b" + _ev + r"\b", tx, re.I):
+                warn("CAUSE (fix, do not justify): " + f"{lab} links a move to an event ('{m.group(0)[:70]}'); keep the link only if a named source gives that reason "
+                     "for that same index or stock, logged in facts.txt as 'cause: <reason>' with that source's address; otherwise state the move and the event as two separate facts")
+except Exception as e: warn(f"cause check skipped: {e}")
 # MARKET PRICES IN AT MOST TWO PLACES (Ralph 22.10.2026, from 23.10)
 try:
     if today_d >= dt.date(2026, 10, 23):
@@ -650,8 +679,8 @@ if pdf:
         short = 0
         for col, sel in (("left", lambda t: t[2] < W / 2), ("right", lambda t: t[0] > W / 2)):
             gap = foot - max(t[3] for t in body if sel(t))
-            if gap > 90:
-                short += 1; warn(f"DESKTOP STANDARD (fix, do not justify): page 1 {col} column ends {gap:.0f} pt above the footer (desktop editions end within about 75 pt): add a hero, a story or a callout")
+            if gap > (50 if today_d >= dt.date(2026, 10, 24) else 90):
+                short += 1; warn(f"DESKTOP STANDARD (fix, do not justify): page 1 {col} column ends {gap:.0f} pt above the footer (full editions end within about 40 pt): add a hero, a story or a callout")
         if not short: OK.append("page 1 columns filled")
     except Exception as e: warn(f"page fill check skipped: {e}")
 

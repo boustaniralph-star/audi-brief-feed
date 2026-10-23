@@ -649,10 +649,12 @@ def main(content_p, md_p, hero_p, out_pdf):
     # hooks (optional fields): a three-line "today in 3" strip under the masthead, and a Gulf "what it means" line
     top3 = ""
     if C.get("top3"):
-        top3 = '<div class="top3"><div class="t3k">Today in 3</div>' + "".join(
-            f'<div class="t3"><span class="t3n">{i:02d}</span><div><b>{html.escape(x["k"])}</b>{nums(x["t"])}</div></div>'
-            for i, x in enumerate(C["top3"], 1)) + '</div>'
-    means = f'<div class="means"><b>{html.escape(cot.get("means_label", "For Gulf investors"))}</b>{nums(cot["means"])}</div>' if cot.get("means") else ""
+        # three equal columns under one kicker: number and headline share a baseline, the line below runs the full
+        # column width, so the three stories line up however long each one is
+        top3 = '<div class="top3"><div class="t3k">Today in 3</div><div class="t3g">' + "".join(
+            f'<div class="t3"><div class="t3h"><span class="t3n">{i:02d}</span><b>{html.escape(x["k"])}</b></div>{nums(x["t"])}</div>'
+            for i, x in enumerate(C["top3"], 1)) + '</div></div>'
+    means = ""  # the "For Gulf investors" line was retired by Ralph on 23.10.2026
     chartblock = (f'<div class="chartcap"><b>{html.escape(cot["chart_title"])}</b><span>{html.escape(cot["chart_method"])}</span></div><img class="ch" src="hero.svg">' if has_hero else '')
     page1 = f'''<div class="page">
  <div class="mast"><div><img class="wm" src="wordmark.png"><div class="kicker">Daily Brief</div><div class="date">{D}</div></div><img class="circ" src="circles.png"></div>

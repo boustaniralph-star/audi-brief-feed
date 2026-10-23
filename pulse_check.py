@@ -140,15 +140,44 @@ if ht == "valuewiped" and "value" not in ct: warn("hero chart_title does not men
 if ht == "range" and "range" not in ct and "52" not in ct: warn("hero chart_title does not mention the range for a range hero")
 if ht == "intraday" and not any(k in ct for k in ("session", "intraday", "gap", "open", "minute")): warn("hero chart_title does not describe the session for an intraday hero")
 
+# COMPLIANCE (Ralph, 23.10.2026, ahead of external distribution under CMA rules): no analyst price targets or
+# ratings, no "where are they now" returns of past picks, no relayed buy or sell calls, no short-window performance
+# picked from a chosen start date. Structural items FAIL (nothing is sent); wording items must be fixed.
+CP = "COMPLIANCE (fix, do not justify): "
+try:
+    if today_d >= dt.date(2026, 10, 23):
+        if H.get("type") == "range" or H.get("targets") or H.get("ratings"):
+            fail("COMPLIANCE: the range hero with analyst price targets or ratings is retired; pick another hero type")
+        _all_x = [x for pg in ("p1", "p2") for side in ("extras_left", "extras_right") for x in C.get(pg, {}).get(side, []) or []]
+        _all_x += [x for c in C.get("p2", {}).get("cards", []) for x in c.get("charts", [])]
+        if any(x.get("type") == "alumni" for x in _all_x):
+            fail("COMPLIANCE: the 'Where are they now?' (alumni) box is retired; it shows returns of past picks")
+        _txt = alltext + " " + json.dumps(H) + (" " + open(txt, encoding="utf-8").read() if txt else "")
+        for rx, what in ((r"\bprice targets?\b|\btarget price\b|\banalyst targets?\b|\bmean target\b|\bconsensus target\b", "an analyst price target"),
+                         (r"\b(?:time to (?:buy|sell)|(?:rates?|rated|rating|rate it) (?:it )?(?:a )?(?:strong )?(?:buy|sell|hold)|(?:buy|sell|hold|outperform|overweight|underweight) rating|"
+                          r"upgraded? (?:\w+ )?to (?:buy|outperform|overweight)|downgraded? (?:\w+ )?to (?:sell|underperform|underweight)|"
+                          r"recommends? (?:buying|selling)|says? (?:to )?(?:buy|sell)\b|\d+ (?:analysts )?(?:rate|say) (?:it )?buy)", "a buy, sell or hold call or analyst rating"),
+                         (r"\b(?:analyst consensus|consensus rating)\b", "an analyst consensus rating")):
+            for m in list(re.finditer(rx, _txt, re.I))[:2]:
+                warn(CP + f"remove {what}: '...{_txt[max(0, m.start() - 40):m.end() + 20].strip()}...' (no targets, ratings or relayed trade calls; report the news, not the call)")
+        # performance from a chosen start date ("+13.1% since 02.10") reads as cherry-picked: use the day, the week,
+        # the month, YTD, 12 months or since listing, each with its source
+        for m in list(re.finditer(r"[+-]?\d+(?:\.\d+)?%\s*(?:\w+\s){0,2}since\s+(?:the\s+)?(\d{1,2}\.\d{1,2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{1,2})(?!\.\d{4})", _txt, re.I))[:3]:
+            warn(CP + f"performance from a chosen start date: '{m.group(0)}'; use a standard window (day, week, month, YTD, 12 months, since listing) and name its source")
+        for s_ in C.get("cotd", {}).get("stats", []):
+            if re.search(r"\bsince\s+\d{1,2}\.\d{1,2}\b", s_.get("l", ""), re.I):
+                warn(CP + f"Company of the Day stat '{s_.get('v')} {s_.get('l')}' measures from a chosen date; use a standard window")
+except Exception as e: warn(f"compliance check skipped: {e}")
+
 # THEME DAYS (promised to Ralph; enforced from 20.10.2026, Monday's map from 19.10): each weekday has its chart
 THEMES = {0: "Monday: week-ahead map (weekmap)", 1: "Tuesday: earnings scorecard (movers or topmovers)",
           2: "Wednesday: rates day (rates or rates_trend in card B)", 3: "Thursday: Gulf deep dive (a TASI or Gulf-bourse chart)",
-          4: "Friday: weekly scorecard (a scorecard chart: week bars with a YTD column, in card A)", 5: "Saturday: where are they now (alumni) and month bars",
+          4: "Friday: weekly scorecard (a scorecard chart: week bars with a YTD column, in card A)", 5: "Saturday: month in review (month bars in card A)",
           6: "Sunday: ytd bars"}
 def theme_types():
     """chart types today's theme requires; the rotation check lets these repeat"""
     return {0: {"weekmap"}, 1: {"movers", "topmovers"}, 2: {"rates", "rates_trend"}, 3: set(),
-            4: {"scorecard", "week", "ytd"}, 5: {"alumni", "month"}, 6: {"ytd"}}[today_d.weekday()]
+            4: {"scorecard", "week", "ytd"}, 5: {"month"}, 6: {"ytd"}}[today_d.weekday()]
 
 # 6. rotation ledger
 if ledger:
@@ -360,7 +389,7 @@ try:
               3: any(("TASI" in (x.get("highlight") or [])) or "TASI" in (x.get("name", "") + x.get("title", "")) or
                      (x.get("type") == "heatmap" and "Tadawul TASI" in x.get("names", [])) for x in allc),
               4: "scorecard" in cardA or ("week" in cardA and "ytd" in cardA),
-              5: "alumni" in types and "month" in types,
+              5: "month" in cardA,
               6: "ytd" in types}[wd]
         if not ok:
             warn(f"THEME (fix, do not justify): today is {THEMES[wd]}; add it (it may repeat a recent chart type, the rotation check allows it)")

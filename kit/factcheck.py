@@ -54,6 +54,25 @@ def on_page(v, text):
     return any(re.search(r"(?<![\d.,])" + re.escape(c) + r"(?![\d])", text) for c in cands if c)
 
 
+COMMON = set("""that this with from into over after before their about against while will would could also more most less
+than said says year years week month today friday thursday monday tuesday wednesday saturday sunday percent profit revenue
+shares stock stocks market markets index billion million quarter results rose fell gained lost close closed higher lower
+""".split())
+
+
+def is_section_page(u):
+    """A homepage or section page ('argaam.com/en', 'zawya.com/en/capital-markets') shows whatever is new today, so a
+    figure on it proves nothing about the story: such a citation counts as no source."""
+    path = re.sub(r"^https?://[^/]+", "", u).split("?")[0].strip("/")
+    segs = [s for s in path.split("/") if s]
+    return len(segs) < 3 and not re.search(r"\d{4,}|[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+", path)
+
+
+def keywords(text):
+    """Distinctive words (names, places) in a key-figure field, for facts that carry no number."""
+    return [w for w in re.findall(r"[A-Za-z][A-Za-z'\-]{3,}", text) if w.lower() not in COMMON][:6]
+
+
 def audit(lines, fetch=page_text):
     res = []
     cache = {}
@@ -63,7 +82,12 @@ def audit(lines, fetch=page_text):
             continue
         lead, key, src = f[0], f[1], f[2]
         urls = [unwrap(u) for u in re.findall(r"https?://[^\s;,|]+", src)]
+        sections = [u for u in urls if is_section_page(u)]
+        urls = [u for u in urls if not is_section_page(u)]
         nums = figures(key)
+        if not urls and sections:
+            res.append((lead, "NO SOURCE", "section page only: " + sections[0], nums))
+            continue
         if not urls:
             res.append((lead, "MARKET" if re.search(r"market_data\.json|official close", src, re.I) else "NO SOURCE", "", nums))
             continue
@@ -79,7 +103,9 @@ def audit(lines, fetch=page_text):
         if not texts:
             status = "UNREACHABLE"
         elif not nums:
-            status = "CONFIRMED"
+            kw = keywords(key) or keywords(lead)
+            hit = sum(1 for w in kw if any(re.search(r"\b" + re.escape(w) + r"\b", x, re.I) for x in texts))
+            status = "CONFIRMED" if kw and hit >= max(1, (len(kw) + 1) // 2) else ("PARTIAL" if hit else "NOT FOUND")
         else:
             found = sum(1 for v in nums if any(on_page(v, x) for x in texts))
             # at least half of the logged figures (and at least one) must be printed on the cited pages

@@ -84,6 +84,8 @@ def sections(body):
     s["LEDGER"] = m.group(1).strip() if m else ""
     m = re.search(r"=====\s*SOURCES\s*=====\r?\n(.*?)\r?\n=====", body, re.S)
     s["SOURCES"] = m.group(1).strip() if m else ""
+    m = re.search(r"=====\s*FACTS\s*=====\r?\n(.*?)\r?\n=====", body, re.S)
+    s["FACTS"] = m.group(1).strip() if m else ""
     json.loads(s["CONTENT"]); json.loads(s["HERO"])
     return s
 
@@ -260,6 +262,24 @@ def send():
     # reading is selective by design (Ralph, 20.10: core newsletters in full, the rest skimmed); report only, no alert
     covline = f"newsletters read in full: {cov[0]} of {cov[1]} that arrived in the 24 hours before the package" if cov else "newsletters: not checked"
     print(covline)
+    # independent fact audit: every cited page is opened here, outside the writer, and the logged figure looked up
+    try:
+        sys.path.insert(0, os.path.join(HERE, "kit"))
+        import factcheck
+        audit = factcheck.audit(sec.get("FACTS", "").splitlines())
+        factline = factcheck.summary(audit)
+        doubts = [r for r in audit if r[1] in ("NOT FOUND", "PARTIAL", "NO SOURCE")]
+        for lead, st, u, n in audit:
+            print(f"  {st:<12} {lead[:50]:<50} {', '.join(n[:3])} {u[:80]}")
+    except Exception as e:
+        audit, doubts, factline = [], [], f"fact audit: skipped ({type(e).__name__})"
+    print(factline)
+    if doubts and not DRY:
+        alert(f"Fact audit for {STAMP}: {len(doubts)} item(s) to check",
+              "The brief was sent. These facts were not confirmed on the page the writer cited "
+              "(NOT FOUND: the page opened but the figure is not on it; PARTIAL: only some figures are; NO SOURCE: no page cited):\n\n"
+              + "\n".join(f"- {st}: {lead} | figures {', '.join(n)} | {u}" for lead, st, u, n in doubts)
+              + "\n\nPages that could not be opened (paywalls, blocks) are listed in the test footer and the run log, not here.")
     if DRY:
         os.makedirs(os.path.join(WORK, "out"), exist_ok=True)
         shutil.copy(pdfp, os.path.join(WORK, "out", base + ".pdf"))
@@ -269,7 +289,7 @@ def send():
     msg = EmailMessage(); msg["From"] = USER; msg["To"] = ", ".join(RECIP)
     if MODE == "test":
         msg["Subject"] = "[CLOUD TEST] " + subject
-        foot = f"\n\n--- cloud build check ---\npages {pages} | words {words} | pdf {kb} KB | layout {lay}\n{plog.splitlines()[-1] if plog else ''}\n{covline}\n"
+        foot = f"\n\n--- cloud build check ---\npages {pages} | words {words} | pdf {kb} KB | layout {lay}\n{plog.splitlines()[-1] if plog else ''}\n{covline}\n{factline}\n"
         msg.set_content(sec["TXT"] + foot)
     else:
         msg["Subject"] = subject; msg.set_content(sec["TXT"])
@@ -277,7 +297,8 @@ def send():
     smtp_send(msg)
     json.dump({"mode": MODE, "sentAt": NOW.strftime("%H:%M"), "pages": int(pages), "words": words, "kb": kb, "layout": lay,
                "pulse": plog.splitlines()[-1] if plog else "", "recipients": len(RECIP),
-               "newsletters": {"read": cov[0], "arrived": cov[1], "not_read": cov[2]} if cov else None}, open(MARK, "w"))
+               "newsletters": {"read": cov[0], "arrived": cov[1], "not_read": cov[2]} if cov else None,
+               "facts": {"summary": factline, "doubts": [f"{st}: {lead}" for lead, st, u, n in doubts]}}, open(MARK, "w"))
     # chart-rotation memory: one ledger line per sent edition, kept in the repo so the writer never loses days
     led = next((l.strip() for l in sec.get("LEDGER", "").splitlines() if re.match(r"\d\d-\d\d-\d{4}:", l.strip())), "")
     if led:

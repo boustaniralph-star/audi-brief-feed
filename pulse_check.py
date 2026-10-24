@@ -461,6 +461,25 @@ if facts:
             for pnl in C.get("p2", {}).get("gcc_panels", []) or []:
                 if pnl.get("label", "").lower().rstrip(".") not in joined:
                     warn(FX5 + f"no facts.txt line for the panel '{pnl.get('label')}': log its figures with their source page (lead-in = the panel label)")
+        # the same audit GitHub runs after sending: open each cited page and look for the logged figure (skipped
+        # quietly when this machine cannot reach the web)
+        if today_d >= dt.date(2026, 10, 25):
+            try:
+                import os as _o2
+                sys.path.insert(0, _o2.path.dirname(_o2.path.abspath(__file__)))
+                import factcheck as _fc
+                _res = _fc.audit(open(facts, encoding="utf-8").read().splitlines())
+                _web = [r for r in _res if r[1] in ("CONFIRMED", "PARTIAL", "NOT FOUND")]
+                if _web:
+                    for lead_, st_, u_, n_ in _res:
+                        if st_ in ("NOT FOUND", "PARTIAL", "NO SOURCE"):
+                            warn("FACTS (fix, do not justify): " + f"audit {st_}: '{lead_}' figures {', '.join(n_[:3]) or '(words)'} are not on {u_[:70]}; "
+                                 "cite the page that prints them, correct the figure, or cut the story")
+                    OK.append(_fc.summary(_res))
+                else:
+                    OK.append("fact audit not run here (no web access); GitHub runs it after sending")
+            except Exception as e:
+                OK.append(f"fact audit not run here ({type(e).__name__})")
         if FL and not miss: OK.append(f"{len(FL)} key figures verified")
     except Exception as e: warn(f"facts check skipped: {e}")
 # STORY DISCIPLINE (Ralph, 21.10.2026): one story appears once, figures never contradict, the teaser is truly ahead,

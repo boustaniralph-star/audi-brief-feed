@@ -14,3 +14,4 @@
 21-10-2026: hero=range; A=ytd; B=rates_trend+rebased; panels=SABIC Agri-Nutrients profit squeeze+Gulf bond and sukuk sales; extras=numday,teaser; sectors=none
 22-10-2026: hero=line; A=index_board+ytd; B=commodities+rates_trend+rebased; panels=SNB flat quarter+Saudi building costs; extras=numday,teaser; sectors=none
 23-10-2026: hero=line; A=scorecard+movers; B=storyline+storyline; panels=Gulf stock markets on Thursday+Saudi bank loan growth; extras=numday,teaser,storyline; sectors=none
+24-10-2026: hero=guidance; A=month+sectors; B=rates+tiles; panels=Saudi stocks 66-month low+SNB leads Saudi bank profits; extras=numday,teaser; sectors=day

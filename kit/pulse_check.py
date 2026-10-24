@@ -445,6 +445,13 @@ if facts:
                 s5 = f[2].lower()
                 if "http" not in s5 and "market_data.json" not in s5 and "official close" not in s5:
                     warn(FX5 + f"'{f[0]}' names no page ({f[2][:40]}); cite the address of the page that confirms it (only market prices may cite market_data.json or 'official close')")
+                for u_ in re.findall(r"https?://[^\s;,|]+", f[2]):
+                    u_ = re.sub(r"^https?://(?:www\.)?google\.com/url\?q=", "", u_).split("&source=")[0]
+                    path_ = re.sub(r"^https?://[^/]+", "", u_).strip("/")
+                    segs = [p for p in path_.split("?")[0].split("/") if p]
+                    if len(segs) < 3 and not re.search(r"\d{4,}|[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+", path_):
+                        warn(FX5 + f"'{f[0]}' cites {u_[:60]}, a homepage or section page, not the article or filing that states the figure; cite that page")
+                        break
                 if re.search(r"single[- ]source|one source|partial", s5):
                     warn(FX5 + f"'{f[0]}' rests on a single or partial source; confirm it on a second independent source or drop it")
             joined = " ".join(f[0].lower() + " " + f[1].lower() for f in FL)
@@ -631,6 +638,39 @@ try:
                 warn("CAUSE (fix, do not justify): " + f"{lab} links a move to an event ('{m.group(0)[:70]}'); keep the link only if a named source gives that reason "
                      "for that same index or stock, logged in facts.txt as 'cause: <reason>' with that source's address; otherwise state the move and the event as two separate facts")
 except Exception as e: warn(f"cause check skipped: {e}")
+# CURRENCY (Ralph, 24.10.2026): readers know USD and SAR only. Any other currency in the text carries its USD
+# equivalent right after it ("SEK 3.7 bn (about USD 390 m)", python3 enrich.py usd); stat boxes, panels and charts,
+# which have no room for that, show USD or SAR only.
+try:
+    if today_d >= dt.date(2026, 10, 25):
+        CUR = r"(?:EUR|GBP|JPY|CNY|RMB|HKD|INR|KRW|SEK|NOK|DKK|CHF|CAD|AUD|SGD|TWD|BRL|MXN|ZAR|TRY|EGP|PKR|IDR|AED|QAR|KWD|BHD|OMR|euros?|pounds? sterling|yen|yuan|won|rupees?|kronor|krona|lira|dirhams?)"
+        AMT = r"(?:" + CUR + r"\s?-?\d[\d,.]*(?:\s?(?:bn|m|mn|k|tn|billion|million|trillion))?|-?\d[\d,.]*(?:\s?(?:bn|m|mn|k|tn|billion|million|trillion))?\s?" + CUR + r")"
+        texts = [("Today in 3", x.get("t", "") + " " + x.get("k", "")) for x in C.get("top3", []) or []]
+        cot = C.get("cotd", {})
+        texts += [("Company of the Day", cot.get("body", "") + " " + cot.get("catalyst", "") + " " + cot.get("chart_title", ""))]
+        texts += [(f"'{b[0]}'", b[0] + " " + b[1]) for pg in ("p1", "p2") for side in ("left", "right") for s_ in C.get(pg, {}).get(side, []) or [] for b in s_[1]]
+        texts += [(x.get("label", x.get("type", "")), x.get("text", "") + " " + x.get("value", "")) for pg in ("p1", "p2") for side in ("extras_left", "extras_right") for x in C.get(pg, {}).get(side, []) or []]
+        texts += [("question band", C.get("watch", {}).get("text", ""))]
+        if txt: texts += [("text brief", open(txt, encoding="utf-8").read())]
+        seen_c = set()
+        for lab, tx in texts:
+            ms = list(re.finditer(AMT, tx))
+            for k_, m in enumerate(ms):
+                # the USD equivalent must follow this amount, before the next foreign amount
+                end_ = min(m.end() + 45, ms[k_ + 1].start() if k_ + 1 < len(ms) else len(tx))
+                if not re.search(r"USD|SAR", tx[m.end():end_]) and (lab, m.group(0)) not in seen_c:
+                    seen_c.add((lab, m.group(0)))
+                    if len(seen_c) <= 6:
+                        warn("CURRENCY (fix, do not justify): " + f"{lab} quotes '{m.group(0)}' with no USD equivalent; readers know USD and SAR only: "
+                             f"write it as python3 enrich.py usd <CODE> <amount> [bn|m] prints, e.g. 'SEK 3.7 bn (about USD 390 m)'")
+        boxes = [("Company of the Day stat", s.get("v", "") + " " + s.get("l", "")) for s in cot.get("stats", [])]
+        boxes += [(f"panel '{p_.get('label')}'", " ".join([p_.get("value", ""), p_.get("small", "")] + [b.get("t", "") for b in p_.get("bars", [])])) for p_ in C.get("p2", {}).get("gcc_panels", []) or []]
+        boxes += [("hero chart", " ".join(str(v) for v in (H.get("notes") or []) + (H.get("labels") or [])) + " " + C.get("cotd", {}).get("chart_method", ""))]
+        for lab, tx in boxes:
+            m = re.search(r"\b" + CUR + r"\b", tx)
+            if m:
+                warn("CURRENCY (fix, do not justify): " + f"{lab} shows {m.group(0)}; stat boxes, panels and charts show USD or SAR only (convert with python3 enrich.py usd)")
+except Exception as e: warn(f"currency check skipped: {e}")
 # MARKET PRICES IN AT MOST TWO PLACES (Ralph 22.10.2026, from 23.10)
 try:
     if today_d >= dt.date(2026, 10, 23):

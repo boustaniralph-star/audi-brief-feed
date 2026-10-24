@@ -268,6 +268,8 @@ USAGE = """Writer usage (run in /tmp/brief before building):
   python3 enrich.py hero content_v2.json hero_data.json --tadawul
       same for a Tadawul listing (cotd.ticker "Tadawul: 1120"), from the repo's tadawul_series.json (refreshed daily on
       GitHub): the company against the Saudi top 30 (equal weight) and the S&P 500. No market-data tool needed.
+  python3 enrich.py usd SEK 3.7 bn
+      prints "SEK 3.7 bn (about USD 390 m)" from the repo's daily fx_rates.json; readers know only USD and SAR.
   python3 enrich.py scrub content_v2.json hero_data.json
       removes data-provider names (Robinhood, IBKR, Yahoo) from chart captions, subtitles, notes and panel captions.
   python3 enrich.py ytd content_v2.json market_data.json
@@ -275,6 +277,10 @@ USAGE = """Writer usage (run in /tmp/brief before building):
 
 
 def _cli(a):
+    if len(a) >= 3 and a[0] == "usd":
+        # python3 enrich.py usd SEK 3.7 bn  ->  "SEK 3.7 bn (about USD 390 m)"
+        code, amt, unit = a[1].upper(), float(a[2].replace(",", "")), (a[3] if len(a) > 3 else "")
+        print(usd_text(code, amt, unit)); return 0
     if len(a) >= 3 and a[0] == "hero" and "--tadawul" in a:
         C = json.load(open(a[1], encoding="utf-8"))
         m = re.search(r"Tadawul\s*:\s*(\d{4})", C.get("cotd", {}).get("ticker", ""))
@@ -319,6 +325,21 @@ def _cli(a):
             print(f"{i:2d}. {n} (tier {tier}; read {reads}x, gave {used} stories)")
         return 0
     print(USAGE); return 1
+
+
+def usd_text(code, amount, unit=""):
+    """'<CODE> <amount> <unit> (about USD <x>)' from the repo's fx_rates.json (refreshed daily on GitHub)."""
+    rate = _repo_json("fx_rates.json")["usd_per"][code]
+    mult = {"": 1, "k": 1e3, "m": 1e6, "mn": 1e6, "bn": 1e9, "tn": 1e12}[unit.lower()]
+    usd = amount * mult * rate
+    for div, u in ((1e12, "tn"), (1e9, "bn"), (1e6, "m"), (1e3, "k"), (1, "")):
+        if abs(usd) >= div:
+            v = usd / div
+            break
+    else:
+        v, u = usd, ""
+    num = f"{v:,.0f}" if abs(v) >= 100 else (f"{v:,.1f}" if abs(v) >= 10 else f"{v:,.2f}")
+    return f"{code} {amount:g} {unit} (about USD {num} {u})".replace("  ", " ").replace(" )", ")")
 
 
 def _repo_json(name):

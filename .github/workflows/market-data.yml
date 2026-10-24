@@ -45,6 +45,10 @@ jobs:
       - name: Build series.json
         id: series
         run: python3 make_series.py
+      - name: FX rates
+        id: fx
+        continue-on-error: true
+        run: python3 fetch_fx.py
       - name: Tadawul prices
         id: tadawul
         continue-on-error: true
@@ -59,6 +63,7 @@ jobs:
           if [ -f heartbeat.log ]; then git add heartbeat.log; fi
           msg="heartbeat $(date -u +%Y-%m-%d)"
           if [ "${{ steps.tadawul.outcome }}" = success ] && [ -f tadawul_series.json ]; then git add tadawul_series.json; fi
+          if [ "${{ steps.fx.outcome }}" = success ] && [ -f fx_rates.json ]; then git add fx_rates.json; fi
           if [ "${{ steps.fetch.outcome }}" = success ] && [ "${{ steps.series.outcome }}" = success ]; then
             git add market_data.json series.json market_data/
             msg="market data $(date -u +%Y-%m-%d)"

@@ -671,6 +671,30 @@ try:
             if m:
                 warn("CURRENCY (fix, do not justify): " + f"{lab} shows {m.group(0)}; stat boxes, panels and charts show USD or SAR only (convert with python3 enrich.py usd)")
 except Exception as e: warn(f"currency check skipped: {e}")
+# VALUE and LIKE FOR LIKE (Ralph, 24.10.2026): a deal, contract or results story states its amount ("won three Aramco
+# projects" and "record profit, up 28.5%" said neither how much nor how big); a results chart compares one measure.
+try:
+    if today_d >= dt.date(2026, 10, 25):
+        MONEY = r"(?:USD|SAR|EUR|GBP|JPY|CNY|HKD|INR|KRW|SEK|AED|QAR|KWD|EGP)\s?-?\d|\d[\d,.]*\s?(?:bn|m|mn|billion|million)\b"
+        DEAL = r"\b(?:wins?|won|awarded|signs?|signed|acquires?|acquired|acquisition of|buys \w+(?: \w+)? for|takeover of|merger with|raises?|raised)\b"
+        RES = (r"\b(?:reported (?:a |an |its |record |Q[1-4]|first|second|third|fourth|nine|half|full)|posts? (?:a |record |Q[1-4])|posted|earned|"
+               r"net profit|net income|quarterly profit|Q[1-4] (?:net )?(?:profit|revenue|sales|loss))")
+        for pg in ("p1", "p2"):
+            for side in ("left", "right"):
+                for s_ in C.get(pg, {}).get(side, []) or []:
+                    for b in s_[1]:
+                        tx = b[0] + " " + b[1]
+                        if re.search(DEAL + "|" + RES, tx, re.I) and not re.search(MONEY, tx):
+                            if re.search(r"\b(?:yield|PMI|inflation|GDP|index|Fed|ECB)\b", tx) and not re.search(DEAL, tx, re.I):
+                                continue  # a market or data release, not a company result
+                            warn("VALUE (fix, do not justify): " + f"'{b[0]}' reports a deal, contract or result with no amount; give its value "
+                                 "(e.g. 'SAR 1.2 bn of contracts', 'net profit of SAR 410 m, +28.5%') or replace the story")
+        if H.get("type") == "guidance" and H.get("labels"):
+            meas = {re.split(r",|\(", l)[0].strip().lower() for l in H["labels"]}
+            if len(meas) > 1:
+                warn("STORY CHARTS (fix, do not justify): " + f"the results chart mixes measures ({', '.join(sorted(meas))}) on one scale; "
+                     "compare one measure like for like (this quarter vs a year ago vs the forecast)")
+except Exception as e: warn(f"value check skipped: {e}")
 # MARKET PRICES IN AT MOST TWO PLACES (Ralph 22.10.2026, from 23.10)
 try:
     if today_d >= dt.date(2026, 10, 23):

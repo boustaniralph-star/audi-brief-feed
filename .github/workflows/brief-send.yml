@@ -23,6 +23,10 @@ on:
         description: "Build and check today's brief from the package, upload the PDF as an artifact, send nothing"
         type: boolean
         default: false
+      release:
+        description: "Send today's held brief as it is (after a [BRIEF HELD] email)"
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -40,6 +44,7 @@ jobs:
       RECIPIENTS_LIVE: ${{ secrets.RECIPIENTS_LIVE }}
       BRIEF_MODE: ${{ vars.BRIEF_MODE || 'test' }}
       DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+      RELEASE: ${{ inputs.release && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
         with:

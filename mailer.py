@@ -23,6 +23,11 @@ RECIP = [a.strip() for a in os.environ.get("RECIPIENTS_LIVE" if MODE == "live" e
 MARK = os.path.join(HERE, "sent", f"{STAMP}-{MODE}.json")
 DRY = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")   # build and check only: no email, no markers
 ALERT = os.path.join(HERE, "sent", f"{STAMP}-alert.json")
+HELD = os.path.join(HERE, "sent", f"{STAMP}-held.json")
+RELEASE = os.environ.get("RELEASE", "").lower() in ("1", "true", "yes")   # send a held brief as it is
+# pulse_check classes that mean a reader would see a wrong, repeated, unsourced or non-compliant line. When the
+# writer could not run its own checks (PRECHECK: not run), any of these holds the brief for the owner.
+BLOCKING = ("FACTS", "REPETITION", "CONTRADICTION", "TEASER", "CAUSE", "CURRENCY", "VALUE", "COMPLIANCE")
 STALE = os.path.join(HERE, "sent", f"{STAMP}-stale.json")
 
 
@@ -175,6 +180,8 @@ def detect():
         out("found", "true"); return 0
     if os.path.exists(MARK):
         print("already sent today"); out("found", "false"); return 0
+    if os.path.exists(HELD) and not RELEASE:
+        print("held for the owner; run brief-send with release to send it"); out("found", "false"); return 0
     stale_feed_watchdog()
     body = find_package() if (USER and PW and TOKEN) else None
     if body is None:
@@ -250,11 +257,43 @@ def send():
             break
     if not ok:
         alert(f"Build failed for {STAMP}", f"Builder exit {b.returncode}. Nothing was sent.\n\n{log}"); print(log); return 1
-    p = subprocess.run([sys.executable, "pulse_check.py", "content_v2.json", "market_data.json", "hero_data.json", base + ".pdf",
-                        "--txt", base + ".txt", "--today", ISO], cwd=WORK, capture_output=True, text=True)
+    # the writer's sandbox normally runs the full check before sending; when its shell was down it sends the package
+    # marked "PRECHECK: not run" and this run does the full check (ledger, sources, facts and the page audit) instead
+    unchecked = bool(re.search(r"^PRECHECK:\s*not run", body.split("=====TXT=====")[0], re.M | re.I))
+    pargs = ["--txt", base + ".txt", "--today", ISO]
+    lp = os.path.join(HERE, "sent", "ledger.txt")
+    if os.path.exists(lp):
+        shutil.copy(lp, os.path.join(WORK, "ledger.txt")); pargs += ["--ledger", "ledger.txt"]
+    for name, fn in (("SOURCES", "sources.txt"), ("FACTS", "facts.txt")):
+        if unchecked and sec.get(name):
+            open(os.path.join(WORK, fn), "w", encoding="utf-8").write(sec[name] + "\n"); pargs += ["--" + name.lower(), fn]
+    if unchecked:
+        shutil.copy(os.path.join(HERE, "kit", "factcheck.py"), WORK)
+    p = subprocess.run([sys.executable, "pulse_check.py", "content_v2.json", "market_data.json", "hero_data.json", base + ".pdf"]
+                       + pargs, cwd=WORK, capture_output=True, text=True)
     plog = p.stdout.strip()
     if p.returncode != 0:
         alert(f"Pulse check FAILED for {STAMP}", "Nothing was sent.\n\n" + plog); print(plog); return 1
+    blocking = [l.strip()[5:].strip() for l in plog.splitlines()
+                if l.strip().startswith("WARN") and l.strip()[5:].strip().startswith(BLOCKING)]
+    if unchecked:
+        print("precheck: not run by the writer; full check run here,", len(blocking), "blocking warning(s)")
+    if unchecked and blocking and not RELEASE:
+        print(plog)
+        if DRY:
+            print("[dry run] would hold the brief for the owner"); return 0
+        m = EmailMessage(); m["From"] = USER; m["To"] = ", ".join(OWNER)
+        m["Subject"] = f"[BRIEF HELD] {STAMP}: {len(blocking)} check(s) to clear before it goes out"
+        m.set_content("The writer could not run its own checks today, so GitHub checked the brief and held it. "
+                      "Nothing was sent to the recipients. The PDF is attached.\n\n"
+                      + "\n".join("- " + w for w in blocking)
+                      + "\n\nTo send it as it is: GitHub > Actions > brief-send > Run workflow > tick 'release' > Run."
+                      + "\n\nFull check:\n" + plog)
+        m.add_attachment(open(pdfp, "rb").read(), maintype="application", subtype="pdf", filename=base + ".pdf")
+        smtp_send(m)
+        os.makedirs(os.path.dirname(HELD), exist_ok=True)
+        json.dump({"held": blocking}, open(HELD, "w")); out("commit", "true")
+        return 0
     pages = re.search(r"Pages:\s+(\d+)", subprocess.run(["pdfinfo", pdfp], capture_output=True, text=True).stdout).group(1)
     lay = hashlib.sha1(subprocess.run(["pdftotext", "-layout", pdfp, "-"], capture_output=True, text=True).stdout.encode()).hexdigest()[:12]
     words = len(sec["TXT"].split()); kb = os.path.getsize(pdfp) // 1024
@@ -289,7 +328,8 @@ def send():
     msg = EmailMessage(); msg["From"] = USER; msg["To"] = ", ".join(RECIP)
     if MODE == "test":
         msg["Subject"] = "[CLOUD TEST] " + subject
-        foot = f"\n\n--- cloud build check ---\npages {pages} | words {words} | pdf {kb} KB | layout {lay}\n{plog.splitlines()[-1] if plog else ''}\n{covline}\n{factline}\n"
+        pre = "writer precheck: not run (shell down), checked here" + (" and released by the owner" if RELEASE else "") if unchecked else "writer precheck: run"
+        foot = f"\n\n--- cloud build check ---\npages {pages} | words {words} | pdf {kb} KB | layout {lay}\n{plog.splitlines()[-1] if plog else ''}\n{pre}\n{covline}\n{factline}\n"
         msg.set_content(sec["TXT"] + foot)
     else:
         msg["Subject"] = subject; msg.set_content(sec["TXT"])
@@ -297,6 +337,7 @@ def send():
     smtp_send(msg)
     json.dump({"mode": MODE, "sentAt": NOW.strftime("%H:%M"), "pages": int(pages), "words": words, "kb": kb, "layout": lay,
                "pulse": plog.splitlines()[-1] if plog else "", "recipients": len(RECIP),
+               "precheck": "not run" if unchecked else "run", "released": RELEASE,
                "newsletters": {"read": cov[0], "arrived": cov[1], "not_read": cov[2]} if cov else None,
                "facts": {"summary": factline, "doubts": [f"{st}: {lead}" for lead, st, u, n in doubts]}}, open(MARK, "w"))
     # chart-rotation memory: one ledger line per sent edition, kept in the repo so the writer never loses days

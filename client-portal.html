@@ -9,7 +9,7 @@
   --bar:#1B2A4A; --bar-ink:#F1F4FA; --bar-muted:#A9B6CC;
   --accent:#4A6FA5; --accent-ink:#FFFFFF; --slate:#8A9BB0;
   --pos:#1D7A4E; --neg:#B23A3A; --warn:#A66A12; --pos-bg:#E5F3EC; --neg-bg:#F8E7E7; --warn-bg:#F7EEDC; --info-bg:#E6EDF7;
-  --c1:#1B2A4A; --c2:#4A6FA5; --c3:#8A9BB0; --c4:#2E8A86; --c5:#B98A2E; --c6:#7B5EA7;
+  --c1:#1B2A4A; --c2:#4A6FA5; --c3:#8A9BB0; --c4:#2E8A86; --c5:#B98A2E; --c6:#7B5EA7; --c7:#6E8B3D;
   --f-display:"Source Serif 4",Cambria,Georgia,serif; --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
   --r:6px;
 }
@@ -18,13 +18,13 @@
   --bar:#0A101C; --bar-ink:#E9EEF7; --bar-muted:#8D9BB3;
   --accent:#7FA2D6; --accent-ink:#0D1422; --slate:#7D8DA5;
   --pos:#5CC08E; --neg:#E57D7D; --warn:#D9A347; --pos-bg:#14301F; --neg-bg:#3A1A1C; --warn-bg:#352812; --info-bg:#18273F;
-  --c1:#A9C1E8; --c2:#5F8BCB; --c3:#8D9BB3; --c4:#49B3AC; --c5:#D3A94F; --c6:#A58BD0; color-scheme:dark}}
+  --c1:#A9C1E8; --c2:#5F8BCB; --c3:#8D9BB3; --c4:#49B3AC; --c5:#D3A94F; --c6:#A58BD0; --c7:#9DBF62; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0D1422; --surface:#141E31; --sunk:#101929; --ink:#E4E9F2; --muted:#94A1B7; --line:#24314A;
   --bar:#0A101C; --bar-ink:#E9EEF7; --bar-muted:#8D9BB3;
   --accent:#7FA2D6; --accent-ink:#0D1422; --slate:#7D8DA5;
   --pos:#5CC08E; --neg:#E57D7D; --warn:#D9A347; --pos-bg:#14301F; --neg-bg:#3A1A1C; --warn-bg:#352812; --info-bg:#18273F;
-  --c1:#A9C1E8; --c2:#5F8BCB; --c3:#8D9BB3; --c4:#49B3AC; --c5:#D3A94F; --c6:#A58BD0; color-scheme:dark}
+  --c1:#A9C1E8; --c2:#5F8BCB; --c3:#8D9BB3; --c4:#49B3AC; --c5:#D3A94F; --c6:#A58BD0; --c7:#9DBF62; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bar)}
@@ -169,9 +169,10 @@ const IB = "Interactive Brokers IBKR", RH = "Robinhood MCP", GM = "Gmail";
 const SAR_PER_USD = 3.75;
 const AC = {
   cash:{label:"Cash & Time Deposits", c:"--c3"}, equity:{label:"Equity", c:"--c2"}, fi:{label:"Fixed Income", c:"--c1"},
-  pe:{label:"Private Equity", c:"--c6"}, option:{label:"Options", c:"--c5"}, sp:{label:"Structured Products", c:"--c4"}
+  pe:{label:"Private Equity", c:"--c6"}, option:{label:"Options", c:"--c5"}, sp:{label:"Structured Products", c:"--c4"},
+  commod:{label:"Commodities", c:"--c7"}
 };
-const AC_ORDER = ["cash","fi","equity","sp","pe","option"];
+const AC_ORDER = ["cash","fi","equity","commod","sp","pe","option"];
 const DEF_TH = {dayMove:3, earnDays:5, cpnDays:7, barrierPts:10, optDays:14, navDays:90, ovDays:30};
 
 // ---------- state ----------
@@ -182,7 +183,7 @@ const S = {
   live:{
     ib:{status:"idle", positions:null, summary:null, perf:null, at:null, err:null},
     rh:{status:"idle", accounts:null, accts:{}, at:null, err:null},
-    quotes:{}, optInst:{}, optQuotes:{}, rat:{}, earn:{}, filings:{}, dataStatus:"idle", dataErr:null
+    quotes:{}, optInst:{}, optQuotes:{}, rat:{}, earn:{}, filings:{}, ibq:{}, mopt:{}, dataStatus:"idle", dataErr:null
   },
   refreshing:false, lastRefresh:null
 };
@@ -295,8 +296,26 @@ function equitySymbols(){
   for(const p of buildPositions()){ if(p.ac==="equity" && p.sym && /^[A-Z.]{1,6}$/.test(p.sym)) set.add(p.sym); if(p.ac==="option" && p.x?.under) set.add(p.x.under); if(p.ac==="sp") for(const u of p.x?.unders||[]) set.add(u.sym); }
   return [...set];
 }
+async function loadManualMarket(force){
+  const hs=Object.values(S.holdings);
+  await pool(hs.filter(h=>(h.ac==="equity"||h.ac==="commod") && num(h.conid)), 3, async h=>{
+    const r=await call(IB,"get_price_snapshot",{contract_id:num(h.conid), ...(h.exchange?{exchange:h.exchange}:{}), market_data_names:["last","prior_close","top_status"]},force,10*60e3);
+    const st=r.p?.["top-status"]?.status, last=num(r.p?.last?.price), prev=num(r.p?.["prior-close"]?.price);
+    S.live.ibq[h.conid] = (last!=null && st!=="REJECT") ? {px:last, prev, status:st, at:r.at} : {px:null, status:st||"no data", at:r.at};
+  });
+  const opts=hs.filter(h=>h.ac==="option" && h.underlying && h.expiry && num(h.strike));
+  await pool(opts, 3, async h=>{
+    const k=moptKey(h); if(S.live.mopt[k]) return;
+    const r=await call(RH,"get_option_instruments",{chain_symbol:h.underlying.toUpperCase(), expiration_dates:h.expiry, strike_price:num(h.strike).toFixed(4), type:h.optType||"call"},false,24*60*60e3);
+    const i=(r.p?.data?.instruments||[])[0]; if(i){ S.live.mopt[k]=i.id; S.live.optInst[i.id]=i; }
+  });
+  const ids=opts.map(h=>S.live.mopt[moptKey(h)]).filter(Boolean);
+  for(const c of chunk(ids,20)){ try{ const r=await call(RH,"get_option_quotes",{instrument_ids:c},force,5*60e3); for(const q of r.p?.data?.results||[]) S.live.optQuotes[q.quote?.instrument_id]={...q, at:r.at}; }catch(_){} }
+}
+const moptKey = h => [String(h.underlying||"").toUpperCase(), h.expiry, num(h.strike), h.optType||"call"].join("|");
 async function loadMarket(force){
   S.live.dataStatus="busy"; S.live.dataErr=null; render();
+  try{ await loadManualMarket(force); }catch(_){}
   const syms=equitySymbols();
   // quotes for manual equities, SP underlyings, option underlyings and IBKR stocks not already quoted
   await loadQuotes(syms.filter(s=>force || !S.live.quotes[s]), force);
@@ -348,9 +367,10 @@ async function afterRefreshWrites(){
 function clientOf(key){ return S.accounts[key]?.clientId || "_unassigned"; }
 function eff(key, live){ const o=S.overrides[key]; const v=num(o?.price); return v!=null ? {px:v, ov:o} : {px:live, ov:null}; }
 function clsMap(sym, ac){ const m=(S.settings.classMap||{})[String(sym||"").toUpperCase()]; return AC[m] ? m : ac; }
-function cpnSchedule(maturity, freq){
-  const step=12/(freq||2); let next=maturity, guard=0; const t=TODAY();
-  while(addMonths(next,-step) > t && guard++<400) next=addMonths(next,-step);
+function cpnSchedule(anchor, freq){
+  const step=12/(freq||2); let next=anchor, guard=0; const t=TODAY();
+  while(next < t && guard++<400) next=addMonths(next,step);
+  while(addMonths(next,-step) >= t && guard++<800) next=addMonths(next,-step);
   return {next, last:addMonths(next,-step)};
 }
 function ytm(pricePct, cpn, freq, maturity){
@@ -409,21 +429,25 @@ function buildPositions(){
     const b={key, cid, src:"Manual", ac:h.ac, h, ccy, x:{}};
     if(h.ac==="cash"){
       const P=num(h.principal)||0;
-      if(h.kind==="td"){
+      if(h.kind==="td" || h.kind==="loan"){
+        const sg = h.kind==="loan" ? -1 : 1;
         const end = h.maturity && h.maturity<t ? h.maturity : t; const d=h.start? Math.max(0,days(h.start,end)) : 0;
         const accr=P*(num(h.rate)||0)/100*d/(num(h.basis)||360);
         const full=h.start&&h.maturity ? P*(num(h.rate)||0)/100*days(h.start,h.maturity)/(num(h.basis)||360) : null;
-        push({...b, name:`${h.bank||"Time deposit"} TD ${num(h.rate)!=null?h.rate+"%":""}`.trim(), value:P+accr, cost:P, day:null, x:{kind:"td", rate:num(h.rate), maturity:h.maturity, accr, interestAtMat:full, start:h.start}});
+        push({...b, name:`${h.bank||(sg<0?"Loan":"Time deposit")} ${sg<0?"fixed term loan":"TD"} ${num(h.rate)!=null?h.rate+"%":""}`.trim(), value:sg*(P+accr), cost:sg*P, day:null, x:{kind:h.kind, rate:num(h.rate), maturity:h.maturity, accr:sg*accr, interestAtMat:full!=null?sg*full:null, start:h.start}});
       } else push({...b, name:`${h.bank||"Cash"}${h.notes?" · "+h.notes:""}`, value:P, cost:P, day:null, x:{kind:"cash"}});
     } else if(h.ac==="fi"){
       const F=num(h.face)||0, c=num(h.coupon)||0, f=num(h.freq)||2, e=eff(key, num(h.price));
-      let accr=0, sch=null; if(h.maturity){ sch=cpnSchedule(h.maturity,f); accr=F*c/100/f*Math.max(0,days(sch.last,t))/Math.max(1,days(sch.last,sch.next)); }
+      let accr=0, sch=null; const anchor=h.maturity||h.cpnAnchor; if(anchor){ sch=cpnSchedule(anchor,f); accr=F*c/100/f*Math.max(0,days(sch.last,t))/Math.max(1,days(sch.last,sch.next)); }
       push({...b, name:h.name||h.isin||"Bond", isin:h.isin, qty:F, livePx:num(h.price), px:e.px, ov:e.ov, value: e.px!=null ? F*e.px/100+accr : null, cost: num(h.costPx)!=null ? F*num(h.costPx)/100 : null, day:null,
-        x:{coupon:c, freq:f, maturity:h.maturity, nextCpn:sch?.next && sch.next<=h.maturity ? sch.next : null, cpnAmt:F*c/100/f, accr, ytm: e.px!=null ? ytm(e.px,c,f,h.maturity) : null, rating:h.rating, priceDate:h.priceDate}});
-    } else if(h.ac==="equity"){
-      const sym=(h.symbol||"").toUpperCase(), q=S.live.quotes[sym], live=q?.px ?? num(h.price), prev=num(q?.adjusted_previous_close), qty=num(h.qty)||0, e=eff(key, live);
+        x:{coupon:c, freq:f, maturity:h.maturity, nextCpn:sch?.next && (!h.maturity || sch.next<=h.maturity) ? sch.next : null, perpetual:!h.maturity, cpnAmt:F*c/100/f, accr, ytm: e.px!=null && h.maturity ? ytm(e.px,c,f,h.maturity) : null, rating:h.rating, priceDate:h.priceDate, priceSource:h.priceSource}});
+    } else if(h.ac==="equity" || h.ac==="commod"){
+      const sym=(h.symbol||"").toUpperCase(), q=S.live.quotes[sym], ib=h.conid?S.live.ibq[h.conid]:null;
+      const src = q?.px!=null ? "rh" : ib?.px!=null ? "ib" : "manual";
+      const live = src==="rh" ? q.px : src==="ib" ? ib.px : num(h.price), prev = src==="rh" ? num(q.adjusted_previous_close) : src==="ib" ? ib.prev : null;
+      const qty=num(h.qty)||0, e=eff(key, live);
       push({...b, name:h.name||sym, sym:sym||null, isin:h.isin, qty, livePx:live, px:e.px, ov:e.ov, value: e.px!=null? qty*e.px : null, cost: num(h.costPx)!=null ? qty*num(h.costPx) : null,
-        day: (!e.ov && q?.px!=null && prev!=null) ? (q.px-prev)*qty : null, x:{manualPx: !q?.px, prev}});
+        day: (!e.ov && src!=="manual" && live!=null && prev!=null) ? (live-prev)*qty : null, x:{manualPx: src==="manual", pxSrc:src, priceDate:h.priceDate, priceSource:h.priceSource, prev}});
     } else if(h.ac==="pe"){
       const e=eff(key, num(h.nav)), called=num(h.called)||0, dist=num(h.distributed)||0;
       push({...b, name:h.name||"PE fund", qty:null, livePx:num(h.nav), px:e.px, ov:e.ov, value:e.px, cost:called, day:null,
@@ -435,10 +459,13 @@ function buildPositions(){
         x:{issuer:h.issuer, unders, worst, barrier:num(h.barrier), autocall:num(h.autocall), coupon:num(h.coupon), nextObs:h.nextObs, maturity:h.maturity,
            distB: worst && num(h.barrier)!=null ? worst.perf*100-num(h.barrier) : null, distA: worst && num(h.autocall)!=null ? worst.perf*100-num(h.autocall) : null}});
     } else if(h.ac==="option"){
-      const sign=h.side==="short"?-1:1, qty=num(h.qty)||0, mult=num(h.mult)||100, e=eff(key, num(h.price));
-      push({...b, name:`${(h.underlying||"").toUpperCase()} ${h.strike||""} ${h.optType==="put"?"Put":"Call"} ${fmtDs(h.expiry)} '${String(h.expiry||"").slice(2,4)}`, qty:sign*qty, mult, livePx:num(h.price), px:e.px, ov:e.ov,
-        value: e.px!=null ? sign*qty*mult*e.px : null, cost: num(h.costPx)!=null ? sign*qty*mult*num(h.costPx) : null, day:null,
-        x:{under:(h.underlying||"").toUpperCase(), strike:num(h.strike), optType:h.optType||"call", expiry:h.expiry, side:h.side||"long"}});
+      const sign=h.side==="short"?-1:1, qty=num(h.qty)||0, mult=num(h.mult)||100;
+      const qq=S.live.optQuotes[S.live.mopt[moptKey(h)]], mark=num(qq?.quote?.mark_price), close=num(qq?.close?.price) ?? num(qq?.quote?.previous_close_price);
+      const live = mark ?? num(h.price), e=eff(key, live);
+      push({...b, name:`${(h.underlying||"").toUpperCase()} ${h.strike||""} ${h.optType==="put"?"Put":"Call"} ${fmtDs(h.expiry)} '${String(h.expiry||"").slice(2,4)}`, qty:sign*qty, mult, livePx:live, px:e.px, ov:e.ov,
+        value: e.px!=null ? sign*qty*mult*e.px : null, cost: num(h.costPx)!=null ? sign*qty*mult*num(h.costPx) : null,
+        day: (!e.ov && mark!=null && close!=null) ? sign*qty*mult*(mark-close) : null,
+        x:{under:(h.underlying||"").toUpperCase(), strike:num(h.strike), optType:h.optType||"call", expiry:h.expiry, side:h.side||"long", manualPx: mark==null, delta: num(qq?.quote?.delta)!=null ? num(qq.quote.delta)*sign : null}});
     }
   }
   // option moneyness from underlying quotes
@@ -482,7 +509,7 @@ function buildEvents(pos, horizon=30){
   for(const p of pos){
     if(p.ac==="equity" && p.sym){ const n=nextEarn(p.sym); if(n && !seenE.has(p.cid+p.sym)){ seenE.add(p.cid+p.sym); add(n.date,"Earnings",p,`${p.sym} reports${n.timing?" ("+n.timing+")":""}${n.verified===false?" · tentative":""}${n.est!=null?" · EPS est "+n.est.toFixed(2):""}`); } }
     if(p.ac==="fi"){ if(p.x.nextCpn) add(p.x.nextCpn,"Coupon",p,`${p.name} coupon`, p.x.cpnAmt*(p.usd||0)); if(p.x.maturity) add(p.x.maturity,"Maturity",p,`${p.name} matures`, (p.qty||0)*(p.usd||0)); }
-    if(p.ac==="cash" && p.x.kind==="td" && p.x.maturity) add(p.x.maturity,"TD maturity",p,`${p.name} matures`, ((p.cost||0)+(p.x.interestAtMat||0))*(p.usd||0));
+    if(p.ac==="cash" && (p.x.kind==="td"||p.x.kind==="loan") && p.x.maturity) add(p.x.maturity,p.x.kind==="loan"?"Loan maturity":"TD maturity",p,`${p.name} matures`, ((p.cost||0)+(p.x.interestAtMat||0))*(p.usd||0));
     if(p.ac==="option" && p.x.expiry) add(p.x.expiry,"Option expiry",p,`${p.name}${p.x.mny!=null?" · "+(p.x.mny>=0?"ITM ":"OTM ")+Math.abs(p.x.mny*100).toFixed(1)+"%":""}`);
     if(p.ac==="sp"){ if(p.x.nextObs) add(p.x.nextObs,"Observation",p,`${p.name} observation${p.x.distA!=null?" · "+(p.x.distA>=0?"above":"below")+" autocall by "+Math.abs(p.x.distA).toFixed(1)+" pts":""}`); if(p.x.maturity) add(p.x.maturity,"Maturity",p,`${p.name} matures`); }
   }
@@ -504,7 +531,7 @@ function buildAlerts(agg){
       const n=nextEarn(p.sym); if(n && days(t,n.date)<=T.earnDays) a("info",p.cid,`${p.sym} reports in ${days(t,n.date)} days (${fmtDs(n.date)})`,p.key);
     }
     if(p.ac==="fi"){ if(p.x.nextCpn && days(t,p.x.nextCpn)<=T.cpnDays) a("info",p.cid,`${p.name} coupon on ${fmtDs(p.x.nextCpn)}`,p.key); if(p.x.maturity && days(t,p.x.maturity)<=T.cpnDays) a("warn",p.cid,`${p.name} matures ${fmtDs(p.x.maturity)}`,p.key); if(p.px!=null && p.px<80) a("neg",p.cid,`${p.name} priced at ${px(p.px)} (below 80)`,p.key); }
-    if(p.ac==="cash" && p.x.kind==="td" && p.x.maturity && days(t,p.x.maturity)<=T.cpnDays) a("warn",p.cid,`${p.name} matures ${fmtDs(p.x.maturity)}${days(t,p.x.maturity)<0?" (past maturity, update or remove)":""}`,p.key);
+    if(p.ac==="cash" && (p.x.kind==="td"||p.x.kind==="loan") && p.x.maturity && days(t,p.x.maturity)<=T.cpnDays) a("warn",p.cid,`${p.name} matures ${fmtDs(p.x.maturity)}${days(t,p.x.maturity)<0?" (past maturity, update or remove)":""}`,p.key);
     if(p.ac==="sp" && p.x.distB!=null && p.x.distB<=T.barrierPts) a(p.x.distB<0?"neg":"warn",p.cid,`${p.name}: worst-of ${p.x.worst.sym} is ${p.x.distB<0?"below":"within "+p.x.distB.toFixed(1)+" pts of"} the ${p.x.barrier}% barrier`,p.key);
     if(p.ac==="option" && p.x.expiry && days(t,p.x.expiry)<=T.optDays && days(t,p.x.expiry)>=0) a("warn",p.cid,`${p.name} expires in ${days(t,p.x.expiry)} days`,p.key);
     if(p.ac==="pe" && (!p.x.navDate || days(p.x.navDate,t)>T.navDays)) a("warn",p.cid,`${p.name} NAV is ${p.x.navDate?days(p.x.navDate,t)+" days old":"undated"}`,p.key);
@@ -588,10 +615,10 @@ function evRow(e){ return `<div class="li"><span class="when">${fmtDs(e.date)}</
 function srcTag(p){ const t = p.src==="IBKR"?`<span class="tag ib">IBKR</span>`:p.src==="Robinhood"?`<span class="tag rh">RH${p.acct?" "+mask(p.acct).slice(-4):""}</span>`:`<span class="tag">Manual</span>`; return t + (p.ov?` <span class="tag ov" title="Override: ${esc(p.ov.reason||"")}">Override</span>`:""); }
 function priceCell(p, unit=""){
   if(p.px==null) return `<span class="muted">${p.ac==="cash"?"":"no price"}</span>`;
-  return `<span class="num">${px(p.px)}${unit}</span>${p.ov?`<div class="muted small">live ${p.livePx!=null?px(p.livePx):"–"}</div>`:""}${p.x?.manualPx?`<div class="muted small">manual</div>`:""}`;
+  const srcNote = p.x?.pxSrc==="ib" ? "IBKR" : p.x?.manualPx ? ["manual", p.x.priceDate?fmtDs(p.x.priceDate):"", p.x.priceSource||""].filter(Boolean).join(" · ") : "";
+  return `<span class="num">${px(p.px)}${unit}</span>${p.ov?`<div class="muted small">live ${p.livePx!=null?px(p.livePx):"–"}</div>`:""}${srcNote?`<div class="muted small" title="${esc(srcNote)}">${esc(srcNote)}</div>`:""}`;
 }
 function rowMenu(p){
-  const can = p.ac!=="cash" || p.x?.kind==="td";
   return `<details class="menu"><summary class="btn sm ghost" aria-label="Actions for ${esc(p.name)}">Actions</summary><div class="menu-pop">
     ${p.ac!=="cash"?`<button data-act="override" data-k="${esc(p.key)}">${p.ov?"Change override":"Override price"}</button>`:""}
     ${p.ov?`<button data-act="clearOv" data-k="${esc(p.key)}">Clear override</button>`:""}
@@ -616,14 +643,14 @@ function colsFor(ac){
         const b=+r.num_buy_ratings||0,h=+r.num_hold_ratings||0,s=+r.num_sell_ratings||0,n=b+h+s, m=num(r.mean_price_target), up = m!=null&&p.px? m/p.px-1 : null;
         return `<td><div class="bars" title="${b} buy · ${h} hold · ${s} sell">${n?`<i style="width:${b/n*100}%;background:var(--pos)"></i><i style="width:${h/n*100}%;background:var(--slate)"></i><i style="width:${s/n*100}%;background:var(--neg)"></i>`:""}</div><div class="small"><span class="num">${b}/${h}/${s}</span> · PT <span class="num">${m!=null?px(m):"n/a"}</span> <span class="num ${cls(up)}">${pct(up,1)}</span></div></td>`; }],
       ["Earnings",p=>{ if(!p.sym) return `<td class="muted">–</td>`; const n=nextEarn(p.sym), l=lastEarn(p.sym); return `<td class="small">${n?`<span class="num">${fmtDs(n.date)}</span>${n.verified===false?" <span class='muted'>tentative</span>":""}`:`<span class="muted">${S.live.earn[p.sym]?"none scheduled":"–"}</span>`}${l&&l.est!=null?`<div class="muted">Last <span class="num ${cls(l.act-l.est)}">${l.act.toFixed(2)} vs ${l.est.toFixed(2)}</span></div>`:""}</td>`; }]],
-    fi:[["Holding",nm],["Face",p=>`<td class="r num">${money(p.qty)}</td>`,"r"],["Price",p=>`<td class="r">${priceCell(p)}${p.x.priceDate?`<div class="muted small">${fmtDs(p.x.priceDate)}</div>`:""}</td>`,"r"],["Value",val,"r"],["Unrealized",upl,"r"],
+    fi:[["Holding",nm],["Face",p=>`<td class="r num">${money(p.qty)}</td>`,"r"],["Price",p=>`<td class="r">${priceCell(p)}${p.x.priceDate?`<div class="muted small">${fmtDs(p.x.priceDate)}${p.x.priceSource?" · "+esc(p.x.priceSource):""}</div>`:""}</td>`,"r"],["Value",val,"r"],["Unrealized",upl,"r"],
       ["Coupon",p=>`<td class="num">${p.x.coupon!=null?p.x.coupon.toFixed(3)+"%":"–"}<div class="muted small">${p.x.freq}x / yr</div></td>`],
       ["Next coupon",p=>`<td class="num">${p.x.nextCpn?fmtDs(p.x.nextCpn):"–"}<div class="muted small">${p.x.nextCpn?esc(p.ccy)+" "+money(p.x.cpnAmt):""}</div></td>`],
       ["Accrued",p=>`<td class="r num">${money(p.x.accr)}</td>`,"r"],
-      ["Maturity",p=>`<td class="num">${p.x.maturity?fmtD(p.x.maturity):"–"}<div class="muted small">${p.x.maturity?(days(T,p.x.maturity)/365).toFixed(1)+" yrs":""}</div></td>`],
+      ["Maturity",p=>`<td class="num">${p.x.maturity?fmtD(p.x.maturity):p.x.perpetual?"Perpetual":"–"}<div class="muted small">${p.x.maturity?(days(T,p.x.maturity)/365).toFixed(1)+" yrs":""}</div></td>`],
       ["YTM",p=>`<td class="r num">${p.x.ytm!=null?(p.x.ytm*100).toFixed(2)+"%":"–"}</td>`,"r"]],
     cash:[["Holding",nm],["Amount",p=>`<td class="r num">${esc(p.ccy)} ${money(p.cost)}</td>`,"r"],["Rate",p=>`<td class="r num">${p.x.rate!=null?p.x.rate.toFixed(2)+"%":"–"}</td>`,"r"],
-      ["Accrued",p=>`<td class="r num">${p.x.kind==="td"?money(p.x.accr):"–"}</td>`,"r"],["Value",val,"r"],
+      ["Accrued",p=>`<td class="r num">${p.x.kind!=="cash"?money(p.x.accr):"–"}</td>`,"r"],["Value",val,"r"],
       ["Maturity",p=>`<td class="num">${p.x.maturity?fmtD(p.x.maturity):"–"}<div class="muted small">${p.x.maturity?(days(T,p.x.maturity)>=0?days(T,p.x.maturity)+" days":"matured"):""}</div></td>`],
       ["Interest at maturity",p=>`<td class="r num">${p.x.interestAtMat!=null?money(p.x.interestAtMat):"–"}</td>`,"r"]],
     pe:[["Fund",nm],["Commitment",p=>`<td class="r num">${money(p.x.commitment)}</td>`,"r"],["Called",p=>`<td class="r num">${money(p.x.called)}</td>`,"r"],["Unfunded",p=>`<td class="r num">${money(p.x.unfunded)}</td>`,"r"],["Distributed",p=>`<td class="r num">${money(p.x.dist)}</td>`,"r"],
@@ -634,12 +661,13 @@ function colsFor(ac){
       ["To barrier",p=>`<td class="r num ${p.x.distB!=null&&p.x.distB<=th().barrierPts?"neg":""}">${p.x.distB!=null?p.x.distB.toFixed(1)+" pts":"–"}<div class="muted small">${p.x.barrier!=null?"at "+p.x.barrier+"%":""}</div></td>`,"r"],
       ["To autocall",p=>`<td class="r num">${p.x.distA!=null?(p.x.distA>0?"+":"")+p.x.distA.toFixed(1)+" pts":"–"}<div class="muted small">${p.x.autocall!=null?"at "+p.x.autocall+"%":""}</div></td>`,"r"],
       ["Next obs.",p=>`<td class="num">${p.x.nextObs?fmtDs(p.x.nextObs):"–"}<div class="muted small">${p.x.coupon!=null?p.x.coupon+"% p.a.":""}</div></td>`]],
+    commod:null,
     option:[["Contract",nm],["Qty",p=>`<td class="r num">${p.qty!=null?p.qty:"–"}</td>`,"r"],["Mark",p=>`<td class="r">${priceCell(p)}</td>`,"r"],["Day",day,"r"],["Value",val,"r"],["P&L",upl,"r"],
       ["Spot · moneyness",p=>`<td class="r num">${p.x.spot!=null?px(p.x.spot):"–"}<div class="small ${p.x.mny!=null?(p.x.mny>=0?"warn":"muted"):"muted"}">${p.x.mny!=null?(p.x.mny>=0?"ITM ":"OTM ")+Math.abs(p.x.mny*100).toFixed(1)+"%":""}</div></td>`,"r"],
       ["Delta",p=>`<td class="r num">${p.x.delta!=null?p.x.delta.toFixed(2):"–"}</td>`,"r"],
       ["Expiry",p=>`<td class="num">${p.x.expiry?fmtD(p.x.expiry):"–"}<div class="small ${p.x.expiry&&days(T,p.x.expiry)<=th().optDays?"warn":"muted"}">${p.x.expiry?days(T,p.x.expiry)+" days":""}</div></td>`]],
   };
-  return C[ac];
+  return C[ac] || C.equity;
 }
 function viewClient(cid){
   const c=S.clients[cid]; if(!c) return `<div class="empty">This client was removed. <button class="btn sm" data-act="nav" data-v="overview">Back to overview</button></div>`;
@@ -954,13 +982,15 @@ async function clearOv(key){
 
 // ---------- holdings form ----------
 const FIELDS = {
-  cash:[["kind","Type","select",[["td","Time deposit"],["cash","Cash"]]],["bank","Bank / custodian"],["ccy","Currency"],["principal","Amount","num"],["rate","Rate % p.a.","num"],["start","Start date","date"],["maturity","Maturity date","date"],["basis","Day count basis (360 or 365)","num"]],
-  fi:[["name","Bond / sukuk name"],["isin","ISIN"],["ccy","Currency"],["face","Face value","num"],["coupon","Coupon %","num"],["freq","Coupons per year","num"],["maturity","Maturity","date"],["costPx","Cost price (% of par)","num"],["price","Current price (% of par)","num"],["priceDate","Price date","date"],["rating","Rating"]],
-  equity:[["name","Name"],["symbol","Ticker (US tickers price live)"],["isin","ISIN"],["ccy","Currency"],["qty","Quantity","num"],["costPx","Average cost per share","num"],["price","Manual price (used when there is no live quote)","num"],["custodian","Custodian"]],
+  cash:[["kind","Type","select",[["td","Time deposit"],["cash","Cash"],["loan","Fixed term loan (liability)"]]],["bank","Bank / custodian"],["ccy","Currency"],["principal","Amount","num"],["rate","Rate % p.a.","num"],["start","Start date","date"],["maturity","Maturity date","date"],["basis","Day count basis (360 or 365)","num"]],
+  fi:[["name","Bond / sukuk name"],["isin","ISIN"],["ccy","Currency"],["face","Face value","num"],["coupon","Coupon %","num"],["freq","Coupons per year","num"],["maturity","Maturity (blank for perpetual)","date"],["cpnAnchor","Perpetuals: a known coupon date","date"],["costPx","Cost price (% of par)","num"],["price","Current price (% of par)","num"],["priceDate","Price date","date"],["priceSource","Price source"],["rating","Rating"]],
+  equity:[["name","Name"],["symbol","US ticker (prices live from Robinhood)"],["isin","ISIN"],["ccy","Currency"],["qty","Quantity","num"],["costPx","Average cost per unit","num"],["price","Manual price (used when there is no live quote)","num"],["priceDate","Manual price date","date"],["priceSource","Manual price source"],["conid","IBKR contract id (optional live price)","num"],["exchange","IBKR exchange (e.g. SBF, EBS)"],["custodian","Custodian"]],
   pe:[["name","Fund"],["manager","Manager"],["ccy","Currency"],["commitment","Commitment","num"],["called","Called to date","num"],["distributed","Distributed to date","num"],["nav","Latest NAV (your share)","num"],["navDate","NAV date","date"],["vintage","Vintage"]],
   sp:[["name","Product name"],["issuer","Issuer"],["isin","ISIN"],["ccy","Currency"],["notional","Notional","num"],["costPx","Cost price %","num"],["price","Indicative price %","num"],["coupon","Coupon % p.a.","num"],["underlyings","Underlyings with initial levels (AAPL:230, MSFT:410)"],["barrier","Barrier % of initial","num"],["autocall","Autocall % of initial","num"],["nextObs","Next observation date","date"],["maturity","Maturity","date"]],
-  option:[["underlying","Underlying ticker"],["optType","Type","select",[["call","Call"],["put","Put"]]],["side","Side","select",[["long","Long"],["short","Short"]]],["strike","Strike","num"],["expiry","Expiry","date"],["qty","Contracts","num"],["mult","Multiplier","num"],["costPx","Premium per share at entry","num"],["price","Current price per share","num"],["ccy","Currency"]],
+  commod:null,
+  option:[["underlying","Underlying ticker"],["optType","Type","select",[["call","Call"],["put","Put"]]],["side","Side","select",[["long","Long"],["short","Short"]]],["strike","Strike","num"],["expiry","Expiry","date"],["qty","Contracts","num"],["mult","Multiplier","num"],["costPx","Premium per share at entry","num"],["price","Manual price per share (used when Robinhood has no quote)","num"],["ccy","Currency"]],
 };
+FIELDS.commod = FIELDS.equity;
 function holdingForm(h){
   const ac=h.ac||"fi";
   const f=FIELDS[ac].map(([k,l,t,opts])=>{ const v=h[k]??(k==="ccy"?"USD":k==="freq"?2:k==="mult"?100:k==="basis"?360:""); const id="hf_"+k;
@@ -984,7 +1014,7 @@ function readHolding(){
 }
 async function saveHolding(){
   if(!db){ $("#hfStatus").textContent="Saved data is unavailable."; return; }
-  const h=readHolding(); const req={cash:"principal",fi:"face",equity:"qty",pe:"nav",sp:"notional",option:"qty"}[h.ac];
+  const h=readHolding(); const req={cash:"principal",fi:"face",equity:"qty",commod:"qty",pe:"nav",sp:"notional",option:"qty"}[h.ac];
   if(h[req]==null){ $("#hfStatus").textContent=`Enter the ${FIELDS[h.ac].find(f=>f[0]===req)[1].toLowerCase()}.`; return; }
   const {id,...body}=h; Object.keys(body).forEach(k=>{ if(body[k]===undefined) delete body[k]; });
   try{ const ref=id?db.doc("holdings/"+id):db.collection("holdings").doc(); await ref.set({...body, updatedAt:Date.now()}); closeModal(); toast("Holding saved"); }catch(e){ $("#hfStatus").textContent="Could not save. "+(e.code||""); }
@@ -1013,7 +1043,7 @@ function viewSettings(){
       <div class="acts" style="margin-top:10px"><button class="btn pri sm" data-act="saveFx">Save FX rates</button><span class="note">Rates are yours to maintain; the portal does not fetch FX.</span></div></div></section>
   <section class="panel"><div class="panel-h"><h2>Asset class for listed tickers</h2></div>
     <div class="panel-b"><div class="note">Broker positions default to Equity. Reclassify ETFs such as SGOV as Fixed Income or Cash.</div>
-      <label class="f" style="margin-top:8px">One per line, TICKER=class (cash, fi, equity, pe, sp, option)<textarea id="classMap" rows="5">${esc(Object.entries(cm).map(([k,v])=>k+"="+v).join("\n"))}</textarea></label>
+      <label class="f" style="margin-top:8px">One per line, TICKER=class (cash, fi, equity, commod, pe, sp, option)<textarea id="classMap" rows="5">${esc(Object.entries(cm).map(([k,v])=>k+"="+v).join("\n"))}</textarea></label>
       <div class="acts" style="margin-top:10px"><button class="btn pri sm" data-act="saveClassMap">Save mapping</button></div></div></section>
   </div>
   <div class="grid2">

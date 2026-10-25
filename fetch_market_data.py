@@ -292,7 +292,13 @@ def main():
             missing.append(f"{label} - {e}")
     if not rows:
         sys.exit("nothing resolved")
-    payload = {"generatedAt": dt.datetime.now(RIYADH).strftime("%Y-%m-%d %H:%M:%S +03:00"), "timezone": "Asia/Riyadh",
+    try:
+        import crosscheck
+        for line in crosscheck.apply(rows, os.path.join(HERE, "market_data"), dt.datetime.now(RIYADH).strftime("%Y-%m-%d")):
+            print(("::warning::" if line.startswith("CHECK ") else "") + line)
+    except Exception as e:
+        print(f"::warning::cross-check did not run ({type(e).__name__}: {e})")
+    payload ={"generatedAt": dt.datetime.now(RIYADH).strftime("%Y-%m-%d %H:%M:%S +03:00"), "timezone": "Asia/Riyadh",
                "items": rows, "missing": missing}
     text = json.dumps(payload, indent=1)
     os.makedirs(os.path.join(HERE, "market_data"), exist_ok=True)

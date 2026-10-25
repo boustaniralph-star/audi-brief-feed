@@ -113,6 +113,27 @@ def stale_feed_watchdog():
     print("stale feed alert sent")
 
 
+def data_check_alert():
+    """Once a day, tell the owner which prices the feed's cross-check could not confirm (crosscheck.py)."""
+    mark = os.path.join(HERE, "sent", f"{STAMP}-datacheck.json")
+    if os.path.exists(mark) or not (USER and PW):
+        return
+    try:
+        md = json.load(open(os.path.join(HERE, "market_data.json"), encoding="utf-8-sig"))
+    except Exception:
+        return
+    if md.get("generatedAt", "")[:10] != ISO:
+        return
+    flagged = [i["check"] for i in md.get("items", []) if i.get("check")]
+    if not flagged:
+        return
+    alert(f"Unconfirmed prices {STAMP}", "The market-data cross-check could not confirm these closes, so the brief must "
+          "not print them or chart them today (pulse_check enforces it):\n\n" + "\n".join("- " + f for f in flagged))
+    os.makedirs(os.path.dirname(mark), exist_ok=True)
+    json.dump({"flagged": flagged}, open(mark, "w")); out("commit", "true")
+    print("unconfirmed-price alert sent")
+
+
 THREAD_NAMES = {}  # thread id -> newsletter name as in kit/newsletters.txt (filled by newsletter_coverage)
 
 
@@ -183,6 +204,7 @@ def detect():
     if os.path.exists(HELD) and not RELEASE:
         print("held for the owner; run brief-send with release to send it"); out("found", "false"); return 0
     stale_feed_watchdog()
+    data_check_alert()
     body = find_package() if (USER and PW and TOKEN) else None
     if body is None:
         hr = NOW.astimezone(dt.timezone.utc).hour * 60 + NOW.astimezone(dt.timezone.utc).minute

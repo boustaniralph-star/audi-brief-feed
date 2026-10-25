@@ -16,6 +16,10 @@ on:
         description: "Refetch even if market_data.json is already from today"
         type: boolean
         default: false
+      check_only:
+        description: "Only cross-check today's prices (previous download and second source); fetch and commit nothing"
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -29,6 +33,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Cross-check only
+        if: inputs.check_only
+        run: python3 crosscheck.py
       - name: Schedule heartbeat
         if: github.event_name == 'schedule' || github.event_name == 'push'
         env:
@@ -38,25 +45,29 @@ jobs:
           tail -n 30 heartbeat.log > heartbeat.tmp && mv heartbeat.tmp heartbeat.log
           tail -n 1 heartbeat.log
       - name: Fetch market data
+        if: ${{ !inputs.check_only }}
         id: fetch
         env:
           FORCE: ${{ inputs.force && '1' || '' }}
         run: python3 fetch_market_data.py
       - name: Build series.json
+        if: ${{ !inputs.check_only }}
         id: series
         run: python3 make_series.py
       - name: FX rates
+        if: ${{ !inputs.check_only }}
         id: fx
         continue-on-error: true
         run: python3 fetch_fx.py
       - name: Tadawul prices
+        if: ${{ !inputs.check_only }}
         id: tadawul
         continue-on-error: true
         run: python3 fetch_tadawul.py
       - name: Commit
         # always() so the heartbeat is recorded even when the fetch fails; market data is only
         # committed when both data steps succeeded
-        if: always()
+        if: always() && !inputs.check_only
         run: |
           git config user.name "market-data-bot"
           git config user.email "market-data-bot@users.noreply.github.com"

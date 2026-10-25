@@ -165,7 +165,16 @@ textarea.out{font-family:var(--f-num);font-size:12.5px;min-height:320px;backgrou
 (() => {
 "use strict";
 // ---------- constants ----------
-const IB = "Interactive Brokers IBKR", RH = "Robinhood MCP", GM = "Gmail";
+// Connectors are addressed by their claude.ai display name, which varies by account.
+// Each kind lists the names this page declares; the first one that answers is kept.
+const IB = "ib", RH = "rh", GM = "gm";
+const SERVER_NAMES = {
+  ib:["Interactive Brokers IBKR","Interactive Brokers (IBKR)","Interactive Brokers","IBKR","Interactive_Brokers_IBKR"],
+  rh:["Robinhood MCP","Robinhood","Robinhood_MCP"],
+  gm:["Gmail"]
+};
+const MISSING = ["server_not_connected","server_not_found","not_in_manifest","selection_required"];
+const resolved = {};
 const SAR_PER_USD = 3.75;
 const AC = {
   cash:{label:"Cash & Time Deposits", c:"--c3"}, equity:{label:"Equity", c:"--c2"}, fi:{label:"Fixed Income", c:"--c1"},
@@ -231,13 +240,32 @@ const ERR_COPY = {
   tool_error: (s,e) => `${s} reported an error: ${e.message||"no detail"}.`,
 };
 const errText = (s,e) => (ERR_COPY[e?.code] || (() => `${s} is unavailable right now (${e?.code||"error"}).`))(s,e);
-async function call(server, tool, input, force, stale){
-  const opt = {cache: force ? {refresh:true, staleTime:0, gcTime:864e5} : {staleTime: stale ?? 15*60e3, gcTime:864e5}};
-  try { const r = await mcp.callTool(server, tool, input, opt); return {p:r.payload, at:r.cache?.storedAt || Date.now()}; }
-  catch(e){
-    if(e?.retryable){ await sleep((e.retryAfterMs||800) + Math.random()*700); const r = await mcp.callTool(server, tool, input, opt); return {p:r.payload, at:r.cache?.storedAt || Date.now()}; }
-    throw e;
+async function candidates(kind){
+  if(resolved[kind]) return [resolved[kind]];
+  let names=[...SERVER_NAMES[kind]];
+  try{ const saved=localStorage.getItem("cp_srv_"+kind); if(saved && names.includes(saved)) names=[saved, ...names.filter(n=>n!==saved)]; }catch(_){}
+  try{
+    const lt=await mcp.listTools();
+    const ok=new Set((lt.servers||[]).filter(sv=>sv.authStatus==="connected" && (sv.tools||[]).length).map(sv=>sv.server));
+    names.sort((a,b)=>(ok.has(b)?1:0)-(ok.has(a)?1:0));
+  }catch(_){}
+  return names;
+}
+async function callOnce(server, tool, input, opt){
+  try { return await mcp.callTool(server, tool, input, opt); }
+  catch(e){ if(e?.retryable){ await sleep((e.retryAfterMs||800) + Math.random()*700); return await mcp.callTool(server, tool, input, opt); } throw e; }
+}
+async function callKind(kind, tool, input, opt){
+  const names=await candidates(kind); let last;
+  for(const name of names){
+    try{ const r=await callOnce(name, tool, input, opt); if(!resolved[kind]){ resolved[kind]=name; try{ localStorage.setItem("cp_srv_"+kind,name); }catch(_){} } return r; }
+    catch(e){ last=e; if(resolved[kind] || !MISSING.includes(e?.code)) throw e; }
   }
+  throw last;
+}
+async function call(kind, tool, input, force, stale){
+  const opt = {cache: force ? {refresh:true, staleTime:0, gcTime:864e5} : {staleTime: stale ?? 15*60e3, gcTime:864e5}};
+  const r = await callKind(kind, tool, input, opt); return {p:r.payload, at:r.cache?.storedAt || Date.now()};
 }
 async function pool(items, n, fn){ const q=[...items]; await Promise.all(Array.from({length:Math.min(n,q.length)}, async()=>{ while(q.length){ const it=q.shift(); try{ await fn(it); }catch(_){} } })); }
 
@@ -572,6 +600,7 @@ function draw(){
 }
 function banners(){
   const b=[];
+  for(const [n,L] of [["IBKR",S.live.ib],["Robinhood",S.live.rh]]) if(L.err) b.push(`<div class="banner neg"><b>${n} did not load.</b><span>${esc(L.err)}</span><button class="btn sm" data-act="refresh">Try again</button></div>`);
   if(S.mcpState==="none") b.push(`<div class="banner warn"><b>Live data is off in this view.</b><span>Open the portal on claude.ai to connect IBKR and Robinhood.</span></div>`);
   if(S.dbState.startsWith("err") || S.dbState==="none") b.push(`<div class="banner warn"><b>Saved data is unavailable.</b><span>Clients, manual holdings and overrides need you signed in on claude.ai.</span></div>`);
   return b.join("");
@@ -902,7 +931,7 @@ async function toGmail(id){
   if(!body.trim()){ toast("Generate a draft first."); return; }
   const btn=document.querySelector('[data-act="gmail"]'); btn.disabled=true; btn.textContent="Saving…";
   try{
-    const r=await mcp.callTool(GM,"create_draft",{to, subject, body:mdToPlain(body), htmlBody:mdToHtml(body)});
+    const r=await callKind(GM,"create_draft",{to, subject, body:mdToPlain(body), htmlBody:mdToHtml(body)});
     const url=r.payload?.viewUrl; btn.textContent="Saved to Gmail";
     $("#skFootNote").innerHTML = url ? `Saved. <a href="${esc(url)}" target="_blank" rel="noopener">Open in Gmail</a>` : "Saved to your Gmail drafts.";
     await saveDraft(id, true, url);

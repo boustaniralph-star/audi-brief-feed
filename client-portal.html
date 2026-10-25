@@ -1,0 +1,1110 @@
+<title>Client Portal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+/* Layout: navy masthead + tab rail; overview = KPI strip, allocation band, two-column lists; client = tiles + collapsible asset-class ledgers */
+:root{
+  --bg:#F3F5F9; --surface:#FFFFFF; --sunk:#EBEFF5; --ink:#142036; --muted:#5B6880; --line:#DCE2EB;
+  --bar:#1B2A4A; --bar-ink:#F1F4FA; --bar-muted:#A9B6CC;
+  --accent:#4A6FA5; --accent-ink:#FFFFFF; --slate:#8A9BB0;
+  --pos:#1D7A4E; --neg:#B23A3A; --warn:#A66A12; --pos-bg:#E5F3EC; --neg-bg:#F8E7E7; --warn-bg:#F7EEDC; --info-bg:#E6EDF7;
+  --c1:#1B2A4A; --c2:#4A6FA5; --c3:#8A9BB0; --c4:#2E8A86; --c5:#B98A2E; --c6:#7B5EA7;
+  --f-display:"Source Serif 4",Cambria,Georgia,serif; --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0D1422; --surface:#141E31; --sunk:#101929; --ink:#E4E9F2; --muted:#94A1B7; --line:#24314A;
+  --bar:#0A101C; --bar-ink:#E9EEF7; --bar-muted:#8D9BB3;
+  --accent:#7FA2D6; --accent-ink:#0D1422; --slate:#7D8DA5;
+  --pos:#5CC08E; --neg:#E57D7D; --warn:#D9A347; --pos-bg:#14301F; --neg-bg:#3A1A1C; --warn-bg:#352812; --info-bg:#18273F;
+  --c1:#A9C1E8; --c2:#5F8BCB; --c3:#8D9BB3; --c4:#49B3AC; --c5:#D3A94F; --c6:#A58BD0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1422; --surface:#141E31; --sunk:#101929; --ink:#E4E9F2; --muted:#94A1B7; --line:#24314A;
+  --bar:#0A101C; --bar-ink:#E9EEF7; --bar-muted:#8D9BB3;
+  --accent:#7FA2D6; --accent-ink:#0D1422; --slate:#7D8DA5;
+  --pos:#5CC08E; --neg:#E57D7D; --warn:#D9A347; --pos-bg:#14301F; --neg-bg:#3A1A1C; --warn-bg:#352812; --info-bg:#18273F;
+  --c1:#A9C1E8; --c2:#5F8BCB; --c3:#8D9BB3; --c4:#49B3AC; --c5:#D3A94F; --c6:#A58BD0; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bar)}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1360px;margin:0 auto}
+header.mast{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bar);color:var(--bar-ink)}
+.mast-in{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:12px}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand b{font-family:var(--f-display);font-size:20px;font-weight:600;letter-spacing:.01em}
+.brand span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--bar-muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.18);color:var(--bar-ink);white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--slate);flex:none}
+.dot.ok{background:#4FC08A}.dot.err{background:#E06A6A}.dot.busy{background:#E0B54F}
+.mast button,.mast .seg{font:inherit}
+.btn{font:500 13px/1 var(--f-body);padding:8px 12px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,.tab:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.sm{padding:5px 8px;font-size:12px}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--neg)}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.mast .btn{background:transparent;color:var(--bar-ink);border-color:rgba(255,255,255,.25)}
+.mast .btn.pri{background:var(--bar-ink);color:var(--bar);border-color:var(--bar-ink)}
+.seg{display:inline-flex;border:1px solid rgba(255,255,255,.25);border-radius:var(--r);overflow:hidden}
+.seg button{background:transparent;color:var(--bar-muted);border:0;padding:7px 10px;font:500 12px var(--f-body);cursor:pointer}
+.seg button.on{background:rgba(255,255,255,.14);color:var(--bar-ink)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;border-top:1px solid rgba(255,255,255,.08)}
+.tab{background:none;border:0;color:var(--bar-muted);font:500 13px var(--f-body);padding:10px 12px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--bar-ink);border-bottom-color:var(--bar-ink)}
+main{padding-block:20px 60px;display:grid;gap:18px}
+main>*{min-width:0}
+details.cls{min-width:0}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;text-wrap:balance;margin:0}
+h1{font-size:26px}h2{font-size:18px}h3{font-size:15px}
+.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}.small{font-size:12px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:13px}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.warn{color:var(--warn)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.panel-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.panel-h h2,.panel-h h3{margin-right:auto}
+.panel-b{padding:12px 14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:4px;min-width:0}
+.kpi .v{font-family:var(--f-num);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kpi .s{font-size:12px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:18px}
+@media (max-width:900px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface)}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+td.num,td .num{white-space:nowrap}
+tfoot td{font-weight:600;background:var(--sunk)}
+.linkish{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.linkish:hover{text-decoration-color:var(--accent)}
+.tag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.04em;padding:1px 6px;border-radius:4px;background:var(--sunk);color:var(--muted);vertical-align:1px;white-space:nowrap}
+.tag.ov{background:var(--warn-bg);color:var(--warn)}
+.tag.ib{background:var(--info-bg);color:var(--accent)}
+.tag.rh{background:var(--pos-bg);color:var(--pos)}
+.tag.bad{background:var(--neg-bg);color:var(--neg)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.pill.pos{background:var(--pos-bg);color:var(--pos)}.pill.neg{background:var(--neg-bg);color:var(--neg)}.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.alloc{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--sunk)}
+.alloc i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.list{display:grid}
+.li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;padding:9px 14px;border-bottom:1px solid var(--line);align-items:start}
+.li:last-child{border-bottom:0}
+.li .when{font-family:var(--f-num);font-size:12px;color:var(--muted);min-width:52px}
+.sev{width:4px;align-self:stretch;border-radius:2px;background:var(--slate)}
+.sev.neg{background:var(--neg)}.sev.warn{background:var(--warn)}.sev.info{background:var(--accent)}
+.empty{padding:22px 14px;color:var(--muted);display:grid;gap:8px;justify-items:start}
+details.cls{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+details.cls>summary{list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:12px 14px;cursor:pointer}
+details.cls>summary::-webkit-details-marker{display:none}
+details.cls>summary::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+details.cls[open]>summary::before{transform:rotate(45deg)}
+details.cls>summary h3{margin-right:auto}
+details.cls[open]>summary{border-bottom:1px solid var(--line)}
+.acts{display:flex;flex-wrap:wrap;gap:6px}
+.menu{position:relative;display:inline-block}
+.menu>summary{list-style:none;cursor:pointer}
+.menu>summary::-webkit-details-marker{display:none}
+.menu-pop{position:absolute;right:0;top:calc(100% + 4px);z-index:4;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 8px 24px rgba(10,20,40,.18);display:grid;min-width:200px;padding:4px}
+.menu-pop button{background:none;border:0;text-align:left;padding:8px 10px;font:13px var(--f-body);color:var(--ink);cursor:pointer;border-radius:4px}
+.menu-pop button:hover{background:var(--sunk)}
+.range{position:relative;height:6px;border-radius:3px;background:var(--sunk);margin:6px 0 4px;min-width:120px}
+.range i{position:absolute;top:-3px;width:2px;height:12px;background:var(--ink)}
+.range b{position:absolute;top:-3px;width:2px;height:12px;background:var(--accent)}
+.bars{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--sunk)}
+.banner{padding:10px 14px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.banner.warn{background:var(--warn-bg);border-color:transparent}
+.banner.neg{background:var(--neg-bg);border-color:transparent}
+.skills{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.skill{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:8px;align-content:start}
+.skill code{font-family:var(--f-num);font-size:11.5px;color:var(--muted)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px}
+label.f{display:grid;gap:4px;font-size:12px;color:var(--muted);font-weight:500}
+input,select,textarea{font:14px var(--f-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:8px 9px;width:100%;min-width:0}
+textarea{font-family:var(--f-body);line-height:1.5;resize:vertical}
+textarea.out{font-family:var(--f-num);font-size:12.5px;min-height:320px;background:var(--surface)}
+.modal-bg{position:fixed;inset:0;background:rgba(8,14,26,.55);z-index:20;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:max(24px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 24px max(12px,env(safe-area-inset-left,0px))}
+.modal{background:var(--surface);color:var(--ink);border-radius:8px;width:min(860px,100%);border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-h{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.modal-h h2{margin-right:auto}
+.modal-b{padding:16px;display:grid;gap:14px}
+.modal-f{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line)}
+.note{font-size:12px;color:var(--muted)}
+.statusline{font-size:12px;color:var(--muted);min-height:18px}
+.toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:var(--r);font-size:13px;z-index:30;max-width:calc(100% - 32px)}
+.hdr-client{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 18px}
+.hdr-client h1{margin-right:auto}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;font-size:13px}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:560px){h1{font-size:22px}.kpi .v{font-size:18px}.brand span{display:none}}
+</style>
+
+<header class="mast">
+  <div class="wrap mast-in">
+    <div class="brand"><b>Client Portal</b><span>Audi Capital · Wealth Management Advisory</span></div>
+    <div class="chips" id="connChips"></div>
+    <div class="seg" role="group" aria-label="Display currency"><button id="ccyUSD" data-act="ccy" data-v="USD" class="on">USD</button><button id="ccySAR" data-act="ccy" data-v="SAR">SAR</button></div>
+    <button class="btn pri" id="refreshBtn" data-act="refresh">Refresh</button>
+  </div>
+  <div class="wrap"><nav class="tabs" id="tabs" aria-label="Sections"></nav></div>
+</header>
+<div class="wrap"><main id="main"></main></div>
+<div id="modalRoot"></div>
+
+<script>
+(() => {
+"use strict";
+// ---------- constants ----------
+const IB = "Interactive Brokers IBKR", RH = "Robinhood MCP", GM = "Gmail";
+const SAR_PER_USD = 3.75;
+const AC = {
+  cash:{label:"Cash & Time Deposits", c:"--c3"}, equity:{label:"Equity", c:"--c2"}, fi:{label:"Fixed Income", c:"--c1"},
+  pe:{label:"Private Equity", c:"--c6"}, option:{label:"Options", c:"--c5"}, sp:{label:"Structured Products", c:"--c4"}
+};
+const AC_ORDER = ["cash","fi","equity","sp","pe","option"];
+const DEF_TH = {dayMove:3, earnDays:5, cpnDays:7, barrierPts:10, optDays:14, navDays:90, ovDays:30};
+
+// ---------- state ----------
+const S = {
+  view:"overview", clientId:null, ccy:"USD",
+  clients:{}, accounts:{}, holdings:{}, overrides:{}, drafts:{}, snapshots:{}, audit:{}, settings:{}, pt:{},
+  dbReady:false, dbState:"pending", mcpState:"pending", sampleOK:false, me:null,
+  live:{
+    ib:{status:"idle", positions:null, summary:null, perf:null, at:null, err:null},
+    rh:{status:"idle", accounts:null, accts:{}, at:null, err:null},
+    quotes:{}, optInst:{}, optQuotes:{}, rat:{}, earn:{}, filings:{}, dataStatus:"idle", dataErr:null
+  },
+  refreshing:false, lastRefresh:null
+};
+let mcp=null, db=null, user=null, sample=null;
+
+// ---------- utils ----------
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = v => { const n = typeof v === "number" ? v : parseFloat(v); return isFinite(n) ? n : null; };
+const nf0 = new Intl.NumberFormat("en-US",{maximumFractionDigits:0});
+const nf2 = new Intl.NumberFormat("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const disp = v => v == null ? null : (S.ccy === "SAR" ? v * SAR_PER_USD : v);
+const money = v => v == null || !isFinite(v) ? "–" : nf0.format(v);
+const dmoney = v => money(disp(v));
+const px = v => v == null || !isFinite(v) ? "–" : (Math.abs(v) >= 1000 ? nf2.format(v) : (+v).toFixed(Math.abs(v) < 10 ? 3 : 2));
+const pct = (v,d=2) => v == null || !isFinite(v) ? "–" : (v > 0 ? "+" : "") + (v*100).toFixed(d) + "%";
+const cls = v => v == null || !isFinite(v) || Math.abs(v) < 1e-9 ? "" : (v > 0 ? "pos" : "neg");
+const iso = d => { const z = new Date(d); return z.getFullYear()+"-"+String(z.getMonth()+1).padStart(2,"0")+"-"+String(z.getDate()).padStart(2,"0"); };
+const TODAY = () => iso(new Date());
+const pd = s => { if(!s) return null; const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; };
+const days = (a,b) => Math.round((pd(b) - pd(a)) / 864e5);
+const addMonths = (s,n) => { const d = pd(s); const day = d.getDate(); d.setDate(1); d.setMonth(d.getMonth()+n); const last = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); d.setDate(Math.min(day,last)); return iso(d); };
+const fmtD = s => { const d = pd(s); return d ? d.toLocaleDateString("en-US",{day:"2-digit",month:"short",year:"numeric"}) : "–"; };
+const fmtDs = s => { const d = pd(s); return d ? d.toLocaleDateString("en-US",{day:"2-digit",month:"short"}) : "–"; };
+const fmtT = t => t ? new Date(t).toLocaleString("en-US",{month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "–";
+const mask = a => "••••" + String(a).slice(-4);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const th = () => ({...DEF_TH, ...(S.settings.thresholds||{})});
+const chunk = (a,n) => { const o=[]; for(let i=0;i<a.length;i+=n) o.push(a.slice(i,i+n)); return o; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3200); }
+function fxUSD(ccy){ ccy=(ccy||"USD").toUpperCase(); if(ccy==="USD") return 1; if(ccy==="SAR") return 1/SAR_PER_USD; const r=num((S.settings.fx||{})[ccy]); return r && r>0 ? r : null; }
+
+let rq=false; function render(){ if(rq) return; rq=true; requestAnimationFrame(()=>{ rq=false; draw(); }); }
+
+// ---------- connector calls ----------
+const ERR_COPY = {
+  needs_reauth: s => `Reconnect ${s} in claude.ai Settings → Connectors.`,
+  server_not_connected: s => `Add ${s} in claude.ai Settings → Connectors.`,
+  selection_required: s => `Choose which ${s} connector this page should use.`,
+  not_in_manifest: s => `${s} is turned off for this page. Allow it from the artifact's Permissions menu.`,
+  approval_required: s => `${s} needs your approval. Press Refresh to be asked again.`,
+  blocked_by_policy: s => `Your organization blocks ${s} here.`,
+  server_unavailable: s => `${s} did not answer. Try Refresh in a minute.`,
+  tool_error: (s,e) => `${s} reported an error: ${e.message||"no detail"}.`,
+};
+const errText = (s,e) => (ERR_COPY[e?.code] || (() => `${s} is unavailable right now (${e?.code||"error"}).`))(s,e);
+async function call(server, tool, input, force, stale){
+  const opt = {cache: force ? {refresh:true, staleTime:0, gcTime:864e5} : {staleTime: stale ?? 15*60e3, gcTime:864e5}};
+  try { const r = await mcp.callTool(server, tool, input, opt); return {p:r.payload, at:r.cache?.storedAt || Date.now()}; }
+  catch(e){
+    if(e?.retryable){ await sleep((e.retryAfterMs||800) + Math.random()*700); const r = await mcp.callTool(server, tool, input, opt); return {p:r.payload, at:r.cache?.storedAt || Date.now()}; }
+    throw e;
+  }
+}
+async function pool(items, n, fn){ const q=[...items]; await Promise.all(Array.from({length:Math.min(n,q.length)}, async()=>{ while(q.length){ const it=q.shift(); try{ await fn(it); }catch(_){} } })); }
+
+async function loadIB(force){
+  const L=S.live.ib; L.status="busy"; render();
+  const [pos,sum,perf] = await Promise.allSettled([call(IB,"get_account_positions",{},force), call(IB,"get_account_summary",{},force), call(IB,"get_pa_performance_all_periods",{},force,60*60e3)]);
+  if(pos.status==="fulfilled"){ L.positions = pos.value.p?.positions || []; L.at = pos.value.at; L.err=null; L.status="ok"; }
+  else { L.err = errText("IBKR", pos.reason); L.status="err"; if(["needs_reauth","server_not_connected","not_in_manifest","blocked_by_policy"].includes(pos.reason?.code)){ L.positions=null; } }
+  if(sum.status==="fulfilled") L.summary = sum.value.p;
+  if(perf.status==="fulfilled") L.perf = perf.value.p;
+  render();
+}
+function quotePx(q){
+  if(!q) return null; const a=num(q.last_trade_price), b=num(q.last_non_reg_trade_price);
+  const ta=Date.parse(q.venue_last_trade_time||0)||0, tb=Date.parse(q.venue_last_non_reg_trade_time||0)||0;
+  return (b!=null && tb>ta) ? b : (a ?? b);
+}
+async function loadQuotes(syms, force){
+  const need=[...new Set(syms.filter(Boolean).map(s=>s.toUpperCase()))];
+  for(const c of chunk(need,20)){
+    try{ const r=await call(RH,"get_equity_quotes",{symbols:c},force,5*60e3); for(const x of r.p?.data?.results||[]){ const s=x?.quote?.symbol; if(s) S.live.quotes[s]={...x.quote, close:x.close, px:quotePx(x.quote), at:r.at}; } }catch(e){ S.live.dataErr=errText("Robinhood",e); }
+  }
+}
+async function loadRH(force){
+  const L=S.live.rh; L.status="busy"; render();
+  try{
+    const a = await call(RH,"get_accounts",{},force,60*60e3);
+    L.accounts = (a.p?.data?.accounts||[]).filter(x=>!x.deactivated);
+    const accts={};
+    await Promise.all(L.accounts.map(async acc=>{
+      const no=acc.account_number; const o={positions:[], options:[], portfolio:null, err:null};
+      try{
+        let cur=null, guard=0; do{ const r=await call(RH,"get_equity_positions",cur?{account_number:no,cursor:cur}:{account_number:no},force); o.positions.push(...(r.p?.data?.positions||[])); cur=r.p?.data?.next||null; }while(cur && ++guard<6);
+        const op=await call(RH,"get_option_positions",{account_number:no,nonzero:true},force); o.options=(op.p?.data?.positions||[]).filter(x=>num(x.quantity));
+        const pf=await call(RH,"get_portfolio",{account_number:no},force); o.portfolio=pf.p?.data||null;
+      }catch(e){ o.err=errText("Robinhood",e); }
+      accts[no]=o;
+    }));
+    L.accts=accts; L.at=Date.now(); L.err=null; L.status="ok";
+    const anyErr=Object.values(accts).find(x=>x.err); if(anyErr){ L.err=anyErr.err; L.status="err"; }
+    render();
+    // quotes for held equities
+    const syms=[]; for(const o of Object.values(accts)) for(const p of o.positions) syms.push(p.symbol);
+    await loadQuotes(syms, force);
+    // options
+    const ids=[]; for(const o of Object.values(accts)) for(const p of o.options) ids.push(p.option_id);
+    for(const c of chunk(ids,20)){
+      try{ const r=await call(RH,"get_option_instruments",{ids:c.join(",")},force,12*60*60e3); for(const i of r.p?.data?.instruments||[]) S.live.optInst[i.id]=i; }catch(_){}
+      try{ const r=await call(RH,"get_option_quotes",{instrument_ids:c},force,5*60e3); for(const q of r.p?.data?.results||[]) S.live.optQuotes[q.quote?.instrument_id]={...q, at:r.at}; }catch(_){}
+    }
+  }catch(e){ L.err=errText("Robinhood",e); L.status="err"; if(["needs_reauth","server_not_connected","not_in_manifest","blocked_by_policy"].includes(e?.code)){ L.accounts=null; L.accts={}; } }
+  render();
+}
+function equitySymbols(){
+  const set=new Set();
+  for(const p of buildPositions()){ if(p.ac==="equity" && p.sym && /^[A-Z.]{1,6}$/.test(p.sym)) set.add(p.sym); if(p.ac==="option" && p.x?.under) set.add(p.x.under); if(p.ac==="sp") for(const u of p.x?.unders||[]) set.add(u.sym); }
+  return [...set];
+}
+async function loadMarket(force){
+  S.live.dataStatus="busy"; S.live.dataErr=null; render();
+  const syms=equitySymbols();
+  // quotes for manual equities, SP underlyings, option underlyings and IBKR stocks not already quoted
+  await loadQuotes(syms.filter(s=>force || !S.live.quotes[s]), force);
+  for(const c of chunk(syms,75)){
+    try{ const r=await call(RH,"get_equity_analyst_ratings",{symbols:c},force,6*60*60e3); (r.p?.data?.results||[]).forEach((x,i)=>{ S.live.rat[x?.symbol||c[i]] = x?.ratings || null; }); }catch(e){ S.live.dataErr=errText("Robinhood",e); }
+  }
+  render();
+  await pool(syms, 4, async s=>{ const r=await call(RH,"get_earnings_results",{symbol:s},false,12*60*60e3); S.live.earn[s]=r.p?.data?.results||[]; });
+  S.live.dataStatus = S.live.dataErr ? "err" : "ok"; render();
+}
+async function refresh(force){
+  if(!mcp || S.refreshing) return;
+  S.refreshing=true; render();
+  await Promise.all([loadIB(force), loadRH(force)]);
+  await loadMarket(force);
+  S.refreshing=false; S.lastRefresh=Date.now();
+  if(force) await afterRefreshWrites();
+  render();
+}
+
+// ---------- persistence ----------
+function sub(path, into){
+  db.collection(path).onSnapshot(snap=>{ const o={}; snap.docs.forEach(d=>{ o[d.id]={...d.data(), id:d.id}; }); S[into]=o; S.dbReady=true; render(); }, e=>{ S.dbState="err:"+e.code; render(); });
+}
+async function afterRefreshWrites(){
+  if(!db || !S.dbReady) return;
+  const okIB = S.live.ib.status==="ok", okRH = S.live.rh.status==="ok";
+  // value snapshots (only when both connectors answered, so totals are complete)
+  if(okIB && okRH){
+    const t=TODAY(), agg=aggregate();
+    for(const [cid,c] of Object.entries(agg.byClient)){
+      if(cid==="_unassigned" || !S.clients[cid] || !(c.value>0)) continue;
+      const prev=(S.snapshots[cid]?.days)||{}; if(Math.abs((prev[t]||0)-c.value)<0.5) continue;
+      const dd={...prev,[t]:Math.round(c.value*100)/100}; const keys=Object.keys(dd).sort(); while(keys.length>800) delete dd[keys.shift()];
+      try{ await db.doc("snapshots/"+cid).set({days:dd}); }catch(_){}
+    }
+  }
+  // price-target history, used for the "PT cut" alert
+  const cur={...S.pt}; let changed=false; const t=TODAY();
+  for(const [s,r] of Object.entries(S.live.rat)){
+    const m=num(r?.mean_price_target); if(m==null) continue; const o=cur[s];
+    if(!o){ cur[s]={mean:m, at:t}; changed=true; }
+    else if(Math.abs(o.mean-m)>0.005){ cur[s]={mean:m, prevMean:o.mean, changedAt:t, at:t}; changed=true; }
+  }
+  if(changed){ const {id,...rest}=cur; try{ await db.doc("meta/pt").set(rest); }catch(_){} }
+}
+
+// ---------- positions model ----------
+function clientOf(key){ return S.accounts[key]?.clientId || "_unassigned"; }
+function eff(key, live){ const o=S.overrides[key]; const v=num(o?.price); return v!=null ? {px:v, ov:o} : {px:live, ov:null}; }
+function clsMap(sym, ac){ const m=(S.settings.classMap||{})[String(sym||"").toUpperCase()]; return AC[m] ? m : ac; }
+function cpnSchedule(maturity, freq){
+  const step=12/(freq||2); let next=maturity, guard=0; const t=TODAY();
+  while(addMonths(next,-step) > t && guard++<400) next=addMonths(next,-step);
+  return {next, last:addMonths(next,-step)};
+}
+function ytm(pricePct, cpn, freq, maturity){
+  const t=TODAY(); if(!pricePct || !maturity || maturity<=t) return null;
+  freq=freq||2; const {next,last}=cpnSchedule(maturity,freq);
+  const flows=[]; let d=next, g=0; while(d<=maturity && g++<400){ flows.push(d); d=addMonths(d,12/freq); }
+  const accr = cpn/freq * Math.max(0,days(last,t))/Math.max(1,days(last,next));
+  const dirty = pricePct + accr; const c=cpn/freq;
+  const pv = y => flows.reduce((s,dt,i)=>{ const yrs=days(t,dt)/365; return s + (c + (i===flows.length-1?100:0)) / Math.pow(1+y/freq, yrs*freq); },0);
+  let lo=-0.05, hi=0.6; for(let i=0;i<80;i++){ const m=(lo+hi)/2; if(pv(m)>dirty) lo=m; else hi=m; }
+  return (lo+hi)/2;
+}
+function parseUnders(s){ return String(s||"").split(/[,;]+/).map(x=>x.trim()).filter(Boolean).map(x=>{ const [sym,lvl]=x.split(/[:=\s]+/); return {sym:(sym||"").toUpperCase(), init:num(lvl)}; }).filter(u=>u.sym); }
+
+function buildPositions(){
+  const out=[], L=S.live, t=TODAY();
+  const push = p => { p.usd = fxUSD(p.ccy); p.valueUSD = p.usd!=null && p.value!=null ? p.value*p.usd : null; p.costUSD = p.usd!=null && p.cost!=null ? p.cost*p.usd : null; p.dayUSD = p.usd!=null && p.day!=null ? p.day*p.usd : null; p.upl = p.cost ? (p.value - p.cost)/Math.abs(p.cost) : null; if(p.ac==="option" && p.cost) p.upl=(p.value-p.cost)/Math.abs(p.cost); p.dayPct = p.day!=null && p.value!=null && Math.abs(p.value-p.day)>1e-9 ? p.day/Math.abs(p.value-p.day) : null; out.push(p); };
+  // IBKR
+  if(L.ib.positions){
+    const cid=clientOf("ibkr");
+    for(const p of L.ib.positions){
+      const base={STK:"equity",OPT:"option",BOND:"fi",CASH:"cash",FUND:"equity",ETF:"equity",WAR:"option"}[p.asset_class]||"equity";
+      const sym=p.contract_description, key="ib-"+p.contract_id, ac=clsMap(sym,base);
+      const mult=(p.position && p.market_price) ? p.market_value/(p.position*p.market_price) : 1;
+      const e=eff(key, p.market_price);
+      push({key, cid, src:"IBKR", ac, name:sym, sym: base==="equity"?String(sym).toUpperCase():null, ccy:p.currency, qty:p.position, mult, livePx:p.market_price, px:e.px, ov:e.ov,
+        value:p.position*e.px*mult, cost:p.market_value-(p.unrealized_pnl||0), day: e.ov?null:num(p.daily_pnl), x:{}});
+    }
+    const sm=L.ib.summary; const cash=num(sm?.total_cash_value);
+    if(cash) push({key:"ib-cash", cid, src:"IBKR", ac:"cash", name:"IBKR cash", ccy:sm.currency||"USD", qty:null, px:null, value:cash, cost:cash, day:0, x:{kind:"cash"}});
+  }
+  // Robinhood
+  for(const [no,o] of Object.entries(L.rh.accts||{})){
+    const cid=clientOf("rh-"+no);
+    for(const p of o.positions){
+      const sym=p.symbol, q=L.quotes[sym], live=q?.px ?? null, prev=num(q?.adjusted_previous_close), qty=num(p.quantity), avg=num(p.average_buy_price);
+      const key=`rh-${no}-${sym}`, e=eff(key, live);
+      push({key, cid, src:"Robinhood", acct:no, ac:clsMap(sym,"equity"), name:sym, sym, ccy:"USD", qty, livePx:live, px:e.px, ov:e.ov,
+        value: e.px!=null ? qty*e.px : null, cost: avg!=null ? qty*avg : null, day: (!e.ov && live!=null && prev!=null) ? (live-prev)*qty : null, x:{prev}});
+    }
+    for(const op of o.options){
+      const inst=L.optInst[op.option_id]||{}, qq=L.optQuotes[op.option_id], mark=num(qq?.quote?.mark_price), close=num(qq?.close?.price) ?? num(qq?.quote?.previous_close_price);
+      const sign=op.type==="short"?-1:1, mult=num(op.trade_value_multiplier)||100, qty=num(op.quantity), key="rho-"+op.option_id, e=eff(key, mark);
+      const strike=num(inst.strike_price), ot=inst.type;
+      push({key, cid, src:"Robinhood", acct:no, ac:"option", name:`${op.chain_symbol} ${strike!=null?strike:""} ${ot?ot[0].toUpperCase()+ot.slice(1):""} ${fmtDs(op.expiration_date)} '${String(op.expiration_date||"").slice(2,4)}`, sym:null, ccy:"USD", qty:sign*qty, mult, livePx:mark, px:e.px, ov:e.ov,
+        value: e.px!=null ? sign*qty*mult*e.px : null, cost: num(op.average_price)!=null ? num(op.average_price)*qty : null,
+        day: (!e.ov && mark!=null && close!=null) ? sign*qty*mult*(mark-close) : null,
+        x:{under:op.chain_symbol, strike, optType:ot, expiry:op.expiration_date, side:op.type, delta: num(qq?.quote?.delta)!=null ? num(qq.quote.delta)*sign : null, iv:num(qq?.quote?.implied_volatility)}});
+    }
+    const cash=num(o.portfolio?.cash);
+    if(cash) push({key:"rh-cash-"+no, cid, src:"Robinhood", acct:no, ac:"cash", name:"Robinhood cash "+mask(no), ccy:"USD", value:cash, cost:cash, day:0, x:{kind:"cash"}});
+  }
+  // Manual holdings
+  for(const h of Object.values(S.holdings)){
+    const key="m-"+h.id, cid=h.clientId||"_unassigned", ccy=(h.ccy||"USD").toUpperCase();
+    const b={key, cid, src:"Manual", ac:h.ac, h, ccy, x:{}};
+    if(h.ac==="cash"){
+      const P=num(h.principal)||0;
+      if(h.kind==="td"){
+        const end = h.maturity && h.maturity<t ? h.maturity : t; const d=h.start? Math.max(0,days(h.start,end)) : 0;
+        const accr=P*(num(h.rate)||0)/100*d/(num(h.basis)||360);
+        const full=h.start&&h.maturity ? P*(num(h.rate)||0)/100*days(h.start,h.maturity)/(num(h.basis)||360) : null;
+        push({...b, name:`${h.bank||"Time deposit"} TD ${num(h.rate)!=null?h.rate+"%":""}`.trim(), value:P+accr, cost:P, day:null, x:{kind:"td", rate:num(h.rate), maturity:h.maturity, accr, interestAtMat:full, start:h.start}});
+      } else push({...b, name:`${h.bank||"Cash"}${h.notes?" · "+h.notes:""}`, value:P, cost:P, day:null, x:{kind:"cash"}});
+    } else if(h.ac==="fi"){
+      const F=num(h.face)||0, c=num(h.coupon)||0, f=num(h.freq)||2, e=eff(key, num(h.price));
+      let accr=0, sch=null; if(h.maturity){ sch=cpnSchedule(h.maturity,f); accr=F*c/100/f*Math.max(0,days(sch.last,t))/Math.max(1,days(sch.last,sch.next)); }
+      push({...b, name:h.name||h.isin||"Bond", isin:h.isin, qty:F, livePx:num(h.price), px:e.px, ov:e.ov, value: e.px!=null ? F*e.px/100+accr : null, cost: num(h.costPx)!=null ? F*num(h.costPx)/100 : null, day:null,
+        x:{coupon:c, freq:f, maturity:h.maturity, nextCpn:sch?.next && sch.next<=h.maturity ? sch.next : null, cpnAmt:F*c/100/f, accr, ytm: e.px!=null ? ytm(e.px,c,f,h.maturity) : null, rating:h.rating, priceDate:h.priceDate}});
+    } else if(h.ac==="equity"){
+      const sym=(h.symbol||"").toUpperCase(), q=S.live.quotes[sym], live=q?.px ?? num(h.price), prev=num(q?.adjusted_previous_close), qty=num(h.qty)||0, e=eff(key, live);
+      push({...b, name:h.name||sym, sym:sym||null, isin:h.isin, qty, livePx:live, px:e.px, ov:e.ov, value: e.px!=null? qty*e.px : null, cost: num(h.costPx)!=null ? qty*num(h.costPx) : null,
+        day: (!e.ov && q?.px!=null && prev!=null) ? (q.px-prev)*qty : null, x:{manualPx: !q?.px, prev}});
+    } else if(h.ac==="pe"){
+      const e=eff(key, num(h.nav)), called=num(h.called)||0, dist=num(h.distributed)||0;
+      push({...b, name:h.name||"PE fund", qty:null, livePx:num(h.nav), px:e.px, ov:e.ov, value:e.px, cost:called, day:null,
+        x:{commitment:num(h.commitment), called, dist, navDate:h.navDate, tvpi: called ? ((e.px||0)+dist)/called : null, dpi: called? dist/called : null, unfunded: num(h.commitment)!=null ? num(h.commitment)-called : null}});
+    } else if(h.ac==="sp"){
+      const N=num(h.notional)||0, e=eff(key, num(h.price)), unders=parseUnders(h.underlyings);
+      let worst=null; for(const u of unders){ const q=S.live.quotes[u.sym]; u.px=q?.px ?? null; u.perf = u.px!=null && u.init ? u.px/u.init : null; if(u.perf!=null && (worst==null || u.perf<worst.perf)) worst=u; }
+      push({...b, name:h.name||"Structured product", isin:h.isin, qty:N, livePx:num(h.price), px:e.px, ov:e.ov, value: e.px!=null ? N*e.px/100 : null, cost: N*(num(h.costPx)??100)/100, day:null,
+        x:{issuer:h.issuer, unders, worst, barrier:num(h.barrier), autocall:num(h.autocall), coupon:num(h.coupon), nextObs:h.nextObs, maturity:h.maturity,
+           distB: worst && num(h.barrier)!=null ? worst.perf*100-num(h.barrier) : null, distA: worst && num(h.autocall)!=null ? worst.perf*100-num(h.autocall) : null}});
+    } else if(h.ac==="option"){
+      const sign=h.side==="short"?-1:1, qty=num(h.qty)||0, mult=num(h.mult)||100, e=eff(key, num(h.price));
+      push({...b, name:`${(h.underlying||"").toUpperCase()} ${h.strike||""} ${h.optType==="put"?"Put":"Call"} ${fmtDs(h.expiry)} '${String(h.expiry||"").slice(2,4)}`, qty:sign*qty, mult, livePx:num(h.price), px:e.px, ov:e.ov,
+        value: e.px!=null ? sign*qty*mult*e.px : null, cost: num(h.costPx)!=null ? sign*qty*mult*num(h.costPx) : null, day:null,
+        x:{under:(h.underlying||"").toUpperCase(), strike:num(h.strike), optType:h.optType||"call", expiry:h.expiry, side:h.side||"long"}});
+    }
+  }
+  // option moneyness from underlying quotes
+  for(const p of out) if(p.ac==="option"){ const u=S.live.quotes[p.x.under]?.px; if(u!=null && p.x.strike){ p.x.spot=u; const m = p.x.optType==="put" ? (p.x.strike-u)/u : (u-p.x.strike)/u; p.x.mny=m; } }
+  return out;
+}
+function aggregate(){
+  const pos=buildPositions(); const byClient={}, byAC={}; let total=0, day=0, dayKnown=false, fxMissing=new Set();
+  for(const p of pos){
+    if(p.usd==null){ fxMissing.add(p.ccy); continue; }
+    const c = byClient[p.cid] ||= {value:0, cost:0, day:0, dayKnown:false, byAC:{}, n:0};
+    const v=p.valueUSD||0; c.value+=v; c.cost+=p.costUSD ?? v; c.n++; c.byAC[p.ac]=(c.byAC[p.ac]||0)+v;
+    if(p.dayUSD!=null){ c.day+=p.dayUSD; c.dayKnown=true; day+=p.dayUSD; dayKnown=true; }
+    byAC[p.ac]=(byAC[p.ac]||0)+v; total+=v;
+  }
+  return {pos, byClient, byAC, total, day, dayKnown, fxMissing:[...fxMissing]};
+}
+function perfOf(cid, c){
+  const cl=S.clients[cid]||{}, snap=S.snapshots[cid]?.days||{}, keys=Object.keys(snap).sort(), t=TODAY();
+  const mStart=t.slice(0,8)+"01", yStart=t.slice(0,4)+"-01-01", V=c.value;
+  const before = lim => { const k=keys.filter(d=>d<lim); return k.length ? {v:snap[k[k.length-1]], d:k[k.length-1]} : null; };
+  const firstIn = (a,b) => { const k=keys.find(d=>d>=a && d<b); return k ? {v:snap[k], d:k, partial:true} : null; };
+  const mRef = before(mStart) || firstIn(mStart,t);
+  const yRef = num(cl.ytdOpen) ? {v:num(cl.ytdOpen), d:yStart, manual:true} : (before(yStart) || firstIn(yStart,t));
+  const fM=num(cl.flowsMtd)||0, fY=num(cl.flowsYtd)||0;
+  return {
+    day: c.dayKnown && Math.abs(V-c.day)>0 ? c.day/(V-c.day) : null, dayAbs: c.dayKnown ? c.day : null,
+    mtd: mRef?.v ? (V-mRef.v-fM)/mRef.v : null, mtdAbs: mRef?.v ? V-mRef.v-fM : null, mRef,
+    ytd: yRef?.v ? (V-yRef.v-fY)/yRef.v : null, ytdAbs: yRef?.v ? V-yRef.v-fY : null, yRef,
+    inc: c.cost>0 ? (V-c.cost+(num(cl.income)||0))/c.cost : null, incAbs: c.cost>0 ? V-c.cost+(num(cl.income)||0) : null
+  };
+}
+function nextEarn(sym){ const r=(S.live.earn[sym]||[]).find(x=>x?.eps?.actual==null && x?.report?.date>=TODAY()); return r ? {date:r.report.date, timing:r.report.timing, verified:r.report.verified, est:num(r.eps.estimate)} : null; }
+function lastEarn(sym){ const r=(S.live.earn[sym]||[]).filter(x=>x?.eps?.actual!=null).pop(); return r ? {date:r.report.date, est:num(r.eps.estimate), act:num(r.eps.actual)} : null; }
+
+// ---------- events & alerts ----------
+function buildEvents(pos, horizon=30){
+  const t=TODAY(), end=addMonths(t,0), lim=iso(new Date(pd(t).getTime()+horizon*864e5)), ev=[];
+  const add=(date,type,p,label,amt)=>{ if(date && date>=t && date<=lim) ev.push({date,type,cid:p.cid,key:p.key,label,amt}); };
+  const seenE=new Set();
+  for(const p of pos){
+    if(p.ac==="equity" && p.sym){ const n=nextEarn(p.sym); if(n && !seenE.has(p.cid+p.sym)){ seenE.add(p.cid+p.sym); add(n.date,"Earnings",p,`${p.sym} reports${n.timing?" ("+n.timing+")":""}${n.verified===false?" · tentative":""}${n.est!=null?" · EPS est "+n.est.toFixed(2):""}`); } }
+    if(p.ac==="fi"){ if(p.x.nextCpn) add(p.x.nextCpn,"Coupon",p,`${p.name} coupon`, p.x.cpnAmt*(p.usd||0)); if(p.x.maturity) add(p.x.maturity,"Maturity",p,`${p.name} matures`, (p.qty||0)*(p.usd||0)); }
+    if(p.ac==="cash" && p.x.kind==="td" && p.x.maturity) add(p.x.maturity,"TD maturity",p,`${p.name} matures`, ((p.cost||0)+(p.x.interestAtMat||0))*(p.usd||0));
+    if(p.ac==="option" && p.x.expiry) add(p.x.expiry,"Option expiry",p,`${p.name}${p.x.mny!=null?" · "+(p.x.mny>=0?"ITM ":"OTM ")+Math.abs(p.x.mny*100).toFixed(1)+"%":""}`);
+    if(p.ac==="sp"){ if(p.x.nextObs) add(p.x.nextObs,"Observation",p,`${p.name} observation${p.x.distA!=null?" · "+(p.x.distA>=0?"above":"below")+" autocall by "+Math.abs(p.x.distA).toFixed(1)+" pts":""}`); if(p.x.maturity) add(p.x.maturity,"Maturity",p,`${p.name} matures`); }
+  }
+  return ev.sort((a,b)=>a.date.localeCompare(b.date));
+}
+function buildAlerts(agg){
+  const T=th(), t=TODAY(), al=[], pos=agg.pos;
+  const a=(sev,cid,text,key)=>al.push({sev,cid,text,key});
+  if(S.live.ib.err) a("neg",null,"IBKR: "+S.live.ib.err);
+  if(S.live.rh.err) a("neg",null,"Robinhood: "+S.live.rh.err);
+  else if(S.live.dataErr) a("warn",null,"Market data: "+S.live.dataErr);
+  if(agg.fxMissing.length) a("warn",null,`No FX rate for ${agg.fxMissing.join(", ")}. These holdings are left out of totals until you add a rate in Settings.`);
+  const ptSeen=new Set();
+  for(const p of pos){
+    if(p.dayPct!=null && Math.abs(p.dayPct)*100>=T.dayMove) a(p.dayPct<0?"neg":"info",p.cid,`${p.name} ${pct(p.dayPct)} today`,p.key);
+    if(p.ac==="equity" && p.sym && !ptSeen.has(p.cid+p.sym)){
+      ptSeen.add(p.cid+p.sym);
+      const h=S.pt[p.sym]; if(h?.prevMean && h.mean<h.prevMean && h.changedAt && days(h.changedAt,t)<=7) a("warn",p.cid,`${p.sym} consensus PT cut ${px(h.prevMean)} → ${px(h.mean)} (${fmtDs(h.changedAt)})`,p.key);
+      const n=nextEarn(p.sym); if(n && days(t,n.date)<=T.earnDays) a("info",p.cid,`${p.sym} reports in ${days(t,n.date)} days (${fmtDs(n.date)})`,p.key);
+    }
+    if(p.ac==="fi"){ if(p.x.nextCpn && days(t,p.x.nextCpn)<=T.cpnDays) a("info",p.cid,`${p.name} coupon on ${fmtDs(p.x.nextCpn)}`,p.key); if(p.x.maturity && days(t,p.x.maturity)<=T.cpnDays) a("warn",p.cid,`${p.name} matures ${fmtDs(p.x.maturity)}`,p.key); if(p.px!=null && p.px<80) a("neg",p.cid,`${p.name} priced at ${px(p.px)} (below 80)`,p.key); }
+    if(p.ac==="cash" && p.x.kind==="td" && p.x.maturity && days(t,p.x.maturity)<=T.cpnDays) a("warn",p.cid,`${p.name} matures ${fmtDs(p.x.maturity)}${days(t,p.x.maturity)<0?" (past maturity, update or remove)":""}`,p.key);
+    if(p.ac==="sp" && p.x.distB!=null && p.x.distB<=T.barrierPts) a(p.x.distB<0?"neg":"warn",p.cid,`${p.name}: worst-of ${p.x.worst.sym} is ${p.x.distB<0?"below":"within "+p.x.distB.toFixed(1)+" pts of"} the ${p.x.barrier}% barrier`,p.key);
+    if(p.ac==="option" && p.x.expiry && days(t,p.x.expiry)<=T.optDays && days(t,p.x.expiry)>=0) a("warn",p.cid,`${p.name} expires in ${days(t,p.x.expiry)} days`,p.key);
+    if(p.ac==="pe" && (!p.x.navDate || days(p.x.navDate,t)>T.navDays)) a("warn",p.cid,`${p.name} NAV is ${p.x.navDate?days(p.x.navDate,t)+" days old":"undated"}`,p.key);
+    if(p.ov && p.ov.at && days(iso(p.ov.at),t)>T.ovDays) a("warn",p.cid,`Override on ${p.name} is ${days(iso(p.ov.at),t)} days old`,p.key);
+  }
+  if(agg.byClient._unassigned?.n) a("warn",null,`${agg.byClient._unassigned.n} holdings are not assigned to a client. Map accounts in Settings.`);
+  const rank={neg:0,warn:1,info:2}; return al.sort((x,y)=>rank[x.sev]-rank[y.sev]);
+}
+
+// ---------- drawing ----------
+const cname = cid => cid==="_unassigned" ? "Unassigned" : (S.clients[cid]?.name || "Unknown client");
+function chipsHTML(){
+  const st = s => s==="ok"?"ok":s==="err"?"err":s==="busy"?"busy":"";
+  const L=S.live, t=x=>x?fmtT(x):"not loaded";
+  const items = [];
+  if(S.mcpState==="none") items.push(`<span class="chip"><i class="dot err"></i>Connectors need the claude.ai viewer</span>`);
+  else {
+    items.push(`<span class="chip" title="${esc(L.ib.err||"")}"><i class="dot ${st(L.ib.status)}"></i>IBKR · ${L.ib.status==="busy"?"loading":L.ib.err?"error":t(L.ib.at)}</span>`);
+    items.push(`<span class="chip" title="${esc(L.rh.err||"")}"><i class="dot ${st(L.rh.status)}"></i>Robinhood · ${L.rh.status==="busy"?"loading":L.rh.err?"error":t(L.rh.at)}</span>`);
+  }
+  if(S.dbState!=="ok") items.push(`<span class="chip"><i class="dot ${S.dbState==="pending"?"busy":"err"}"></i>${S.dbState==="pending"?"Loading saved data":"Saved data unavailable"}</span>`);
+  return items.join("");
+}
+function tabsHTML(){
+  const tabs=[["overview","Overview"],...Object.values(S.clients).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(c=>["client:"+c.id,c.name||"Client"]),["calendar","Calendar"],["actions","Actions"],["settings","Settings"]];
+  const cur = S.view==="client" ? "client:"+S.clientId : S.view;
+  return tabs.map(([k,l])=>`<button class="tab ${k===cur?"on":""}" data-act="nav" data-v="${esc(k)}">${esc(l)}</button>`).join("");
+}
+function draw(){
+  $("#connChips").innerHTML = chipsHTML();
+  $("#tabs").innerHTML = tabsHTML();
+  $("#ccyUSD").classList.toggle("on",S.ccy==="USD"); $("#ccySAR").classList.toggle("on",S.ccy==="SAR");
+  const rb=$("#refreshBtn"); rb.disabled = S.refreshing || !mcp; rb.textContent = S.refreshing ? "Refreshing…" : "Refresh";
+  const m=$("#main");
+  const keepOpen=[...m.querySelectorAll("details.cls")].reduce((o,d)=>(o[d.dataset.k]=d.open,o),{});
+  m.innerHTML = S.view==="overview" ? viewOverview() : S.view==="client" ? viewClient(S.clientId) : S.view==="calendar" ? viewCalendar() : S.view==="actions" ? viewActions() : viewSettings();
+  m.querySelectorAll("details.cls").forEach(d=>{ if(d.dataset.k in keepOpen) d.open=keepOpen[d.dataset.k]; });
+}
+function banners(){
+  const b=[];
+  if(S.mcpState==="none") b.push(`<div class="banner warn"><b>Live data is off in this view.</b><span>Open the portal on claude.ai to connect IBKR and Robinhood.</span></div>`);
+  if(S.dbState.startsWith("err") || S.dbState==="none") b.push(`<div class="banner warn"><b>Saved data is unavailable.</b><span>Clients, manual holdings and overrides need you signed in on claude.ai.</span></div>`);
+  return b.join("");
+}
+function viewOverview(){
+  const agg=aggregate(), alerts=buildAlerts(agg), ev=buildEvents(agg.pos,30), T=disp(agg.total);
+  const clients=Object.entries(agg.byClient).sort((a,b)=>b[1].value-a[1].value);
+  const movers=agg.pos.filter(p=>p.dayPct!=null && p.ac!=="cash").sort((a,b)=>Math.abs(b.dayPct)-Math.abs(a.dayPct)).slice(0,8);
+  const allocBar = AC_ORDER.filter(k=>agg.byAC[k]>0).map(k=>`<i style="width:${(agg.byAC[k]/agg.total*100).toFixed(2)}%;background:var(${AC[k].c})" title="${AC[k].label}"></i>`).join("");
+  const legend = AC_ORDER.filter(k=>agg.byAC[k]>0).map(k=>`<span><i style="background:var(${AC[k].c})"></i>${AC[k].label} <b class="num">${dmoney(agg.byAC[k])}</b> <span class="muted num">${(agg.byAC[k]/agg.total*100).toFixed(1)}%</span></span>`).join("");
+  const nClients=Object.keys(S.clients).length;
+  return `${banners()}
+  <div class="kpis">
+    <div class="kpi"><span class="eyebrow">Total AUM · ${S.ccy}</span><span class="v">${money(T)}</span><span class="s">${nClients} client${nClients===1?"":"s"} · ${agg.pos.length} holdings</span></div>
+    <div class="kpi"><span class="eyebrow">Day P&amp;L · ${S.ccy}</span><span class="v ${cls(agg.day)}">${agg.dayKnown?(agg.day>0?"+":"")+money(disp(agg.day)):"–"}</span><span class="s">${agg.dayKnown && agg.total? pct(agg.day/(agg.total-agg.day)) + " on live-priced holdings":"Needs live quotes"}</span></div>
+    <div class="kpi"><span class="eyebrow">Next 30 days</span><span class="v">${ev.length}</span><span class="s">${ev.filter(e=>e.type==="Earnings").length} earnings · ${ev.filter(e=>/Coupon|Maturity|TD/.test(e.type)).length} coupons/maturities</span></div>
+    <div class="kpi"><span class="eyebrow">Alerts</span><span class="v ${alerts.some(a=>a.sev==="neg")?"neg":alerts.length?"warn":""}">${alerts.length}</span><span class="s">${S.lastRefresh?"Refreshed "+fmtT(S.lastRefresh):"Showing cached data until you refresh"}</span></div>
+  </div>
+  <section class="panel"><div class="panel-h"><h2>Allocation</h2><span class="muted small">All clients, ${S.ccy}</span></div>
+    <div class="panel-b">${agg.total>0?`<div class="alloc">${allocBar}</div><div class="legend">${legend}</div>`:`<div class="muted">Holdings appear here after the first refresh. Map broker accounts and add manual holdings in Settings.</div>`}</div></section>
+  <div class="grid2">
+    <section class="panel"><div class="panel-h"><h2>Clients</h2><button class="btn sm" data-act="nav" data-v="settings">Manage clients</button></div>
+      ${clients.length?`<div class="tbl-wrap"><table><thead><tr><th>Client</th><th class="r">Value</th><th class="r">Weight</th><th class="r">Day</th><th class="r">MTD</th><th class="r">YTD</th></tr></thead><tbody>
+      ${clients.map(([cid,c])=>{ const pf=perfOf(cid,c); return `<tr><td>${cid==="_unassigned"?`<span class="muted">Unassigned</span>`:`<button class="linkish" data-act="nav" data-v="client:${esc(cid)}">${esc(cname(cid))}</button>`}</td><td class="r num">${dmoney(c.value)}</td><td class="r num">${agg.total?(c.value/agg.total*100).toFixed(1)+"%":"–"}</td><td class="r num ${cls(pf.day)}">${pct(pf.day)}</td><td class="r num ${cls(pf.mtd)}">${pct(pf.mtd)}</td><td class="r num ${cls(pf.ytd)}">${pct(pf.ytd)}</td></tr>`; }).join("")}
+      </tbody></table></div>`:`<div class="empty"><span>No clients yet.</span><button class="btn pri sm" data-act="nav" data-v="settings">Add your first client</button></div>`}
+    </section>
+    <section class="panel"><div class="panel-h"><h2>Alerts</h2></div>
+      <div class="list">${alerts.length?alerts.slice(0,14).map(a=>`<div class="li"><i class="sev ${a.sev}"></i><div>${esc(a.text)}</div><span class="muted small">${a.cid?esc(cname(a.cid)):""}</span></div>`).join(""):`<div class="empty">Nothing needs attention.</div>`}</div>
+    </section>
+  </div>
+  <div class="grid2">
+    <section class="panel"><div class="panel-h"><h2>Upcoming · 30 days</h2><button class="btn sm" data-act="nav" data-v="calendar">Full calendar</button></div>
+      <div class="list">${ev.length?ev.slice(0,14).map(e=>evRow(e)).join(""):`<div class="empty">No earnings, coupons, maturities or expiries in the next 30 days.</div>`}</div></section>
+    <section class="panel"><div class="panel-h"><h2>Today's movers</h2></div>
+      ${movers.length?`<div class="tbl-wrap"><table><tbody>${movers.map(p=>`<tr><td>${p.sym?`<button class="linkish" data-act="company" data-v="${esc(p.sym)}">${esc(p.name)}</button>`:esc(p.name)}<div class="muted small">${esc(cname(p.cid))}</div></td><td class="r num">${px(p.px)}</td><td class="r num ${cls(p.dayPct)}">${pct(p.dayPct)}</td><td class="r num ${cls(p.dayUSD)}">${p.dayUSD!=null?(p.dayUSD>0?"+":"")+dmoney(p.dayUSD):"–"}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Movers appear once live quotes load.</div>`}
+    </section>
+  </div>`;
+}
+function evRow(e){ return `<div class="li"><span class="when">${fmtDs(e.date)}</span><div><span class="tag">${esc(e.type)}</span> ${esc(e.label)}${e.amt?` <span class="num muted">${S.ccy} ${dmoney(e.amt)}</span>`:""}</div><span class="muted small">${esc(cname(e.cid))}</span></div>`; }
+
+function srcTag(p){ const t = p.src==="IBKR"?`<span class="tag ib">IBKR</span>`:p.src==="Robinhood"?`<span class="tag rh">RH${p.acct?" "+mask(p.acct).slice(-4):""}</span>`:`<span class="tag">Manual</span>`; return t + (p.ov?` <span class="tag ov" title="Override: ${esc(p.ov.reason||"")}">Override</span>`:""); }
+function priceCell(p, unit=""){
+  if(p.px==null) return `<span class="muted">${p.ac==="cash"?"":"no price"}</span>`;
+  return `<span class="num">${px(p.px)}${unit}</span>${p.ov?`<div class="muted small">live ${p.livePx!=null?px(p.livePx):"–"}</div>`:""}${p.x?.manualPx?`<div class="muted small">manual</div>`:""}`;
+}
+function rowMenu(p){
+  const can = p.ac!=="cash" || p.x?.kind==="td";
+  return `<details class="menu"><summary class="btn sm ghost" aria-label="Actions for ${esc(p.name)}">Actions</summary><div class="menu-pop">
+    ${p.ac!=="cash"?`<button data-act="override" data-k="${esc(p.key)}">${p.ov?"Change override":"Override price"}</button>`:""}
+    ${p.ov?`<button data-act="clearOv" data-k="${esc(p.key)}">Clear override</button>`:""}
+    ${p.sym?`<button data-act="company" data-v="${esc(p.sym)}">Company tracker</button>`:""}
+    <button data-act="skill" data-v="buy" data-c="${esc(p.cid)}" data-k="${esc(p.key)}">Buy recommendation</button>
+    <button data-act="skill" data-v="replace" data-c="${esc(p.cid)}" data-k="${esc(p.key)}">Exit &amp; replace</button>
+    <button data-act="skill" data-v="order" data-c="${esc(p.cid)}" data-k="${esc(p.key)}">Trade instruction to BAS</button>
+    ${p.ac==="fi"?`<button data-act="skill" data-v="bonds" data-c="${esc(p.cid)}" data-k="${esc(p.key)}">Screen this bond</button>`:""}
+    ${p.ac==="pe"||p.ac==="sp"?`<button data-act="skill" data-v="note" data-c="${esc(p.cid)}" data-k="${esc(p.key)}">Investment note</button>`:""}
+    ${p.src==="Manual"?`<button data-act="editHolding" data-v="${esc(p.h.id)}">Edit holding</button>`:""}
+  </div></details>`;
+}
+function colsFor(ac){
+  const nm = p => `<td>${p.sym?`<button class="linkish" data-act="company" data-v="${esc(p.sym)}">${esc(p.name)}</button>`:esc(p.name)} ${srcTag(p)}${p.isin?`<div class="muted small num">${esc(p.isin)}</div>`:""}</td>`;
+  const val = p => `<td class="r num">${p.valueUSD!=null?dmoney(p.valueUSD):`<span class="warn">FX?</span>`}${p.ccy!=="USD"&&p.value!=null?`<div class="muted small">${esc(p.ccy)} ${money(p.value)}</div>`:""}</td>`;
+  const upl = p => `<td class="r num ${cls(p.upl)}">${pct(p.upl)}<div class="muted small">${p.valueUSD!=null&&p.costUSD!=null?(p.valueUSD-p.costUSD>0?"+":"")+dmoney(p.valueUSD-p.costUSD):""}</div></td>`;
+  const day = p => `<td class="r num ${cls(p.dayPct)}">${pct(p.dayPct)}</td>`;
+  const T=TODAY();
+  const C = {
+    equity:[["Holding",nm],["Qty",p=>`<td class="r num">${p.qty!=null?nf2.format(p.qty):"–"}</td>`,"r"],["Price",p=>`<td class="r">${priceCell(p)}</td>`,"r"],["Day",day,"r"],["Value",val,"r"],["Unrealized",upl,"r"],
+      ["Consensus · PT",p=>{ const r=p.sym?S.live.rat[p.sym]:undefined; if(r===undefined) return `<td class="muted small">${p.sym&&S.live.dataStatus==="busy"?"loading":"–"}</td>`; if(!r) return `<td class="muted small">No analyst coverage</td>`;
+        const b=+r.num_buy_ratings||0,h=+r.num_hold_ratings||0,s=+r.num_sell_ratings||0,n=b+h+s, m=num(r.mean_price_target), up = m!=null&&p.px? m/p.px-1 : null;
+        return `<td><div class="bars" title="${b} buy · ${h} hold · ${s} sell">${n?`<i style="width:${b/n*100}%;background:var(--pos)"></i><i style="width:${h/n*100}%;background:var(--slate)"></i><i style="width:${s/n*100}%;background:var(--neg)"></i>`:""}</div><div class="small"><span class="num">${b}/${h}/${s}</span> · PT <span class="num">${m!=null?px(m):"n/a"}</span> <span class="num ${cls(up)}">${pct(up,1)}</span></div></td>`; }],
+      ["Earnings",p=>{ if(!p.sym) return `<td class="muted">–</td>`; const n=nextEarn(p.sym), l=lastEarn(p.sym); return `<td class="small">${n?`<span class="num">${fmtDs(n.date)}</span>${n.verified===false?" <span class='muted'>tentative</span>":""}`:`<span class="muted">${S.live.earn[p.sym]?"none scheduled":"–"}</span>`}${l&&l.est!=null?`<div class="muted">Last <span class="num ${cls(l.act-l.est)}">${l.act.toFixed(2)} vs ${l.est.toFixed(2)}</span></div>`:""}</td>`; }]],
+    fi:[["Holding",nm],["Face",p=>`<td class="r num">${money(p.qty)}</td>`,"r"],["Price",p=>`<td class="r">${priceCell(p)}${p.x.priceDate?`<div class="muted small">${fmtDs(p.x.priceDate)}</div>`:""}</td>`,"r"],["Value",val,"r"],["Unrealized",upl,"r"],
+      ["Coupon",p=>`<td class="num">${p.x.coupon!=null?p.x.coupon.toFixed(3)+"%":"–"}<div class="muted small">${p.x.freq}x / yr</div></td>`],
+      ["Next coupon",p=>`<td class="num">${p.x.nextCpn?fmtDs(p.x.nextCpn):"–"}<div class="muted small">${p.x.nextCpn?esc(p.ccy)+" "+money(p.x.cpnAmt):""}</div></td>`],
+      ["Accrued",p=>`<td class="r num">${money(p.x.accr)}</td>`,"r"],
+      ["Maturity",p=>`<td class="num">${p.x.maturity?fmtD(p.x.maturity):"–"}<div class="muted small">${p.x.maturity?(days(T,p.x.maturity)/365).toFixed(1)+" yrs":""}</div></td>`],
+      ["YTM",p=>`<td class="r num">${p.x.ytm!=null?(p.x.ytm*100).toFixed(2)+"%":"–"}</td>`,"r"]],
+    cash:[["Holding",nm],["Amount",p=>`<td class="r num">${esc(p.ccy)} ${money(p.cost)}</td>`,"r"],["Rate",p=>`<td class="r num">${p.x.rate!=null?p.x.rate.toFixed(2)+"%":"–"}</td>`,"r"],
+      ["Accrued",p=>`<td class="r num">${p.x.kind==="td"?money(p.x.accr):"–"}</td>`,"r"],["Value",val,"r"],
+      ["Maturity",p=>`<td class="num">${p.x.maturity?fmtD(p.x.maturity):"–"}<div class="muted small">${p.x.maturity?(days(T,p.x.maturity)>=0?days(T,p.x.maturity)+" days":"matured"):""}</div></td>`],
+      ["Interest at maturity",p=>`<td class="r num">${p.x.interestAtMat!=null?money(p.x.interestAtMat):"–"}</td>`,"r"]],
+    pe:[["Fund",nm],["Commitment",p=>`<td class="r num">${money(p.x.commitment)}</td>`,"r"],["Called",p=>`<td class="r num">${money(p.x.called)}</td>`,"r"],["Unfunded",p=>`<td class="r num">${money(p.x.unfunded)}</td>`,"r"],["Distributed",p=>`<td class="r num">${money(p.x.dist)}</td>`,"r"],
+      ["NAV",p=>`<td class="r">${priceCell(p)}<div class="small ${p.x.navDate&&days(p.x.navDate,T)<=th().navDays?"muted":"warn"}">${p.x.navDate?fmtD(p.x.navDate):"undated"}</div></td>`,"r"],["Value",val,"r"],
+      ["TVPI · DPI",p=>`<td class="r num">${p.x.tvpi!=null?p.x.tvpi.toFixed(2)+"x":"–"}<div class="muted small">${p.x.dpi!=null?p.x.dpi.toFixed(2)+"x":""}</div></td>`,"r"]],
+    sp:[["Product",nm],["Notional",p=>`<td class="r num">${money(p.qty)}</td>`,"r"],["Indicative",p=>`<td class="r">${priceCell(p,"%")}</td>`,"r"],["Value",val,"r"],["vs cost",upl,"r"],
+      ["Worst-of",p=>`<td class="small">${p.x.unders.length?p.x.unders.map(u=>`<div><span class="num">${esc(u.sym)}</span> <span class="num ${cls(u.perf!=null?u.perf-1:null)}">${u.perf!=null?(u.perf*100).toFixed(1)+"%":"no quote"}</span></div>`).join(""):"–"}</td>`],
+      ["To barrier",p=>`<td class="r num ${p.x.distB!=null&&p.x.distB<=th().barrierPts?"neg":""}">${p.x.distB!=null?p.x.distB.toFixed(1)+" pts":"–"}<div class="muted small">${p.x.barrier!=null?"at "+p.x.barrier+"%":""}</div></td>`,"r"],
+      ["To autocall",p=>`<td class="r num">${p.x.distA!=null?(p.x.distA>0?"+":"")+p.x.distA.toFixed(1)+" pts":"–"}<div class="muted small">${p.x.autocall!=null?"at "+p.x.autocall+"%":""}</div></td>`,"r"],
+      ["Next obs.",p=>`<td class="num">${p.x.nextObs?fmtDs(p.x.nextObs):"–"}<div class="muted small">${p.x.coupon!=null?p.x.coupon+"% p.a.":""}</div></td>`]],
+    option:[["Contract",nm],["Qty",p=>`<td class="r num">${p.qty!=null?p.qty:"–"}</td>`,"r"],["Mark",p=>`<td class="r">${priceCell(p)}</td>`,"r"],["Day",day,"r"],["Value",val,"r"],["P&L",upl,"r"],
+      ["Spot · moneyness",p=>`<td class="r num">${p.x.spot!=null?px(p.x.spot):"–"}<div class="small ${p.x.mny!=null?(p.x.mny>=0?"warn":"muted"):"muted"}">${p.x.mny!=null?(p.x.mny>=0?"ITM ":"OTM ")+Math.abs(p.x.mny*100).toFixed(1)+"%":""}</div></td>`,"r"],
+      ["Delta",p=>`<td class="r num">${p.x.delta!=null?p.x.delta.toFixed(2):"–"}</td>`,"r"],
+      ["Expiry",p=>`<td class="num">${p.x.expiry?fmtD(p.x.expiry):"–"}<div class="small ${p.x.expiry&&days(T,p.x.expiry)<=th().optDays?"warn":"muted"}">${p.x.expiry?days(T,p.x.expiry)+" days":""}</div></td>`]],
+  };
+  return C[ac];
+}
+function viewClient(cid){
+  const c=S.clients[cid]; if(!c) return `<div class="empty">This client was removed. <button class="btn sm" data-act="nav" data-v="overview">Back to overview</button></div>`;
+  const agg=aggregate(), cc=agg.byClient[cid]||{value:0,cost:0,day:0,dayKnown:false,byAC:{}}, pf=perfOf(cid,cc);
+  const pos=agg.pos.filter(p=>p.cid===cid), ev=buildEvents(pos,30), alerts=buildAlerts({...agg,pos}).filter(a=>a.cid===cid);
+  const ibMapped = S.accounts.ibkr?.clientId===cid, ibPerf=Object.values(S.live.ib.perf?.accounts||{})[0]?.periods;
+  const twr = k => { const a=ibPerf?.[k]?.cps; return a&&a.length ? a[a.length-1] : null; };
+  const tile=(l,v,a,s)=>`<div class="kpi"><span class="eyebrow">${l}</span><span class="v ${cls(v)}">${pct(v)}</span><span class="s">${a!=null?(a>0?"+":"")+money(disp(a))+" "+S.ccy:""}${s?" · "+s:""}</span></div>`;
+  const drafts=Object.values(S.drafts).filter(d=>d.clientId===cid).sort((a,b)=>(b.at||0)-(a.at||0));
+  return `${banners()}
+  <div class="hdr-client"><div><span class="eyebrow">${c.number?"Client "+esc(c.number):"Client"}</span><h1>${esc(c.name)}</h1></div>
+    <div class="acts"><button class="btn sm" data-act="addHolding" data-c="${esc(cid)}">Add holding</button><button class="btn sm" data-act="editClient" data-v="${esc(cid)}">Client details</button></div></div>
+  <div class="kpis">
+    <div class="kpi"><span class="eyebrow">Portfolio value · ${S.ccy}</span><span class="v">${dmoney(cc.value)}</span><span class="s">${pos.length} holdings</span></div>
+    ${tile("Day",pf.day,pf.dayAbs,"live-priced")}
+    ${tile("MTD",pf.mtd,pf.mtdAbs,pf.mRef?.partial?"since "+fmtDs(pf.mRef.d):pf.mRef?"":"no snapshot yet")}
+    ${tile("YTD",pf.ytd,pf.ytdAbs,pf.yRef?.manual?"vs Dec 31 value":pf.yRef?.partial?"since "+fmtDs(pf.yRef.d):pf.yRef?"":"add Dec 31 value")}
+    ${tile("Since inception",pf.inc,pf.incAbs,"vs cost + income")}
+  </div>
+  ${ibMapped && ibPerf ? `<div class="banner"><span class="eyebrow">IBKR reported ${esc(S.live.ib.perf.portfolio_measure||"")}</span><span class="num">1D ${pct(twr("1D"))}</span><span class="num">MTD ${pct(twr("MTD"))}</span><span class="num">YTD ${pct(twr("YTD"))}</span><span class="num">1Y ${pct(twr("1Y"))}</span><span class="muted small">IBKR account only</span></div>`:""}
+  <section class="panel"><div class="panel-h"><h2>Actions</h2><span class="muted small">Drafts follow your skills and house style</span></div>
+    <div class="panel-b acts">${SKILLS.map(s=>`<button class="btn sm" data-act="skill" data-v="${s.id}" data-c="${esc(cid)}">${esc(s.name)}</button>`).join("")}</div></section>
+  ${AC_ORDER.filter(k=>pos.some(p=>p.ac===k)).map(k=>{
+    const ps=pos.filter(p=>p.ac===k).sort((a,b)=>(b.valueUSD||0)-(a.valueUSD||0)), sub=ps.reduce((s,p)=>s+(p.valueUSD||0),0), cols=colsFor(k);
+    const subCost=ps.reduce((s,p)=>s+(p.costUSD??p.valueUSD??0),0);
+    return `<details class="cls" open data-k="${cid}-${k}"><summary><i style="width:10px;height:10px;border-radius:2px;background:var(${AC[k].c})"></i><h3>${AC[k].label}</h3><span class="num">${dmoney(sub)}</span><span class="pill">${cc.value?(sub/cc.value*100).toFixed(1):"0.0"}%</span><span class="pill ${cls(sub-subCost)}">${subCost?pct((sub-subCost)/Math.abs(subCost)):"–"} vs cost</span></summary>
+    <div class="tbl-wrap"><table><thead><tr>${cols.map(([h,,a])=>`<th class="${a||""}">${h}</th>`).join("")}<th class="r">Weight</th><th></th></tr></thead><tbody>
+    ${ps.map(p=>`<tr>${cols.map(([,f])=>f(p)).join("")}<td class="r num">${cc.value&&p.valueUSD!=null?(p.valueUSD/cc.value*100).toFixed(1)+"%":"–"}</td><td class="r">${rowMenu(p)}</td></tr>`).join("")}
+    </tbody></table></div></details>`; }).join("") || `<div class="panel"><div class="empty"><span>No holdings for ${esc(c.name)} yet.</span><span class="small">Map an IBKR or Robinhood account to this client in Settings, or add a manual holding.</span><div class="acts"><button class="btn pri sm" data-act="addHolding" data-c="${esc(cid)}">Add holding</button><button class="btn sm" data-act="nav" data-v="settings">Map accounts</button></div></div></div>`}
+  <div class="grid2">
+    <section class="panel"><div class="panel-h"><h2>Upcoming · 30 days</h2></div><div class="list">${ev.length?ev.map(evRow).join(""):`<div class="empty">Nothing scheduled.</div>`}</div></section>
+    <section class="panel"><div class="panel-h"><h2>Alerts</h2></div><div class="list">${alerts.length?alerts.map(a=>`<div class="li"><i class="sev ${a.sev}"></i><div>${esc(a.text)}</div><span></span></div>`).join(""):`<div class="empty">Nothing needs attention.</div>`}</div></section>
+  </div>
+  <section class="panel"><div class="panel-h"><h2>Recommendation tracker</h2><span class="muted small">Saved drafts and their status</span></div>
+    ${drafts.length?`<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Subject</th><th>Status</th><th></th></tr></thead><tbody>${drafts.map(d=>`<tr><td class="num">${fmtT(d.at)}</td><td>${esc(SKILLS.find(s=>s.id===d.skill)?.name||d.skill)}</td><td>${esc(d.subject||"(no subject)")}${d.gmail?` <span class="tag rh">In Gmail</span>`:""}</td><td><select data-chg="draftStatus" data-v="${esc(d.id)}" aria-label="Status">${["PENDING","EXECUTED","DECLINED","SUPERSEDED"].map(s=>`<option ${d.status===s?"selected":""}>${s}</option>`).join("")}</select></td><td class="r"><button class="btn sm" data-act="openDraft" data-v="${esc(d.id)}">Open</button></td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No saved drafts yet. Generate one from Actions and choose “Save to tracker”.</div>`}
+  </section>`;
+}
+function viewCalendar(){
+  const agg=aggregate(), ev=buildEvents(agg.pos,90);
+  const groups={}; for(const e of ev){ const d=pd(e.date); const mon=new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7)); const k=iso(mon); (groups[k] ||= []).push(e); }
+  return `${banners()}<div><span class="eyebrow">Next 90 days · all clients</span><h1>Calendar</h1></div>
+  ${Object.keys(groups).length?Object.entries(groups).map(([wk,es])=>`<section class="panel"><div class="panel-h"><h3>Week of ${fmtD(wk)}</h3><span class="pill">${es.length}</span></div><div class="list">${es.map(evRow).join("")}</div></section>`).join(""):`<div class="panel"><div class="empty">No events in the next 90 days. Earnings dates load with Refresh; coupons, maturities and observations come from holdings.</div></div>`}`;
+}
+
+// ---------- skills ----------
+const STYLE = `HOUSE EMAIL STYLE (ralph-email-style, mandatory for any client or counterpart email):
+- Salutation: "Dear Your Excellency," for formal-status clients, else "Dear [First Name],". Never "Hi", never "Dear Sir/Madam".
+- First line exactly "Hope this email finds you well." (or "I hope this email finds you well."). No second pleasantry.
+- Close exactly with:
+We remain at your disposal should you have any questions.
+Best regards,
+
+Ralph
+- Institutional "we" with clients ("we recommend"). Confident and direct. No hedging ("perhaps", "might want to consider", "you may wish to", "it could be worth"). No vague qualifiers ("significant", "substantial"): use the number. No marketing language. Do not repeat points.
+- Numbers anchor every claim: exact currency amounts (USD 500,000) and exact percentages.
+- Never use the em-dash character (U+2014) anywhere. Use a colon, comma, semicolon or hyphen.
+- American English. Bullets with "*". Line items with a regular hyphen: "Ardian Access - USD 500,000 (42%)".
+- Subject line patterns: "Topic | Action" or "Topic - Subtitle". Never vague.
+- Portfolio action blocks: "Action - We recommend [selling/trimming/rotating] your [instrument] and [buying] [instrument]." (one sentence, no percentages in the Action line) then "__Rationale:__" pure prose, 60-110 words, ending with a payoff sentence like "[Replacement] gives you [benefit] without [risk]." Exits after a gain open by acknowledging the gain then "but we recommend"; exits after a loss open with the structural argument; trims explain why not a full exit.
+- Multi-action email: salutation, opening line, "Following our monthly review of your account at [Custodian], we recommend the following actions:", blocks separated by "---", then "Kindly confirm your approval on the above so we may proceed accordingly.", then the closing.
+- Never mention benchmark allocations to the client. Max 400 words for recommendation emails, 150 for short action emails.`;
+const SKILLS = [
+  {id:"buy", name:"Buy recommendation", skill:"buy-recommendation", desc:"A specific, sized buy idea tied to portfolio impact, plus the client email.", email:true, hint:"e.g. Deploy the USD 250,000 TD maturing next week into iShares Core MSCI World (URTH)",
+   rules:`SKILL buy-recommendation:
+Every buy needs a specific instrument (full name + ticker or ISIN), a concrete size (currency amount AND % of total portfolio), and the portfolio impact (asset class X.X% -> Y.Y%). State the source of funds when deploying cash or maturities.
+Two layers: INTERNAL sanity check (does it move the asset class toward target, is sizing proportionate, is liquidity sufficient; benchmarks may be referenced here only) and CLIENT-FACING output (no benchmark jargon).
+Client-facing single buy format:
+BUY [Full Instrument Name] ([Ticker]) - USD [Amount] ([X.X]% of portfolio)
+Rationale: [1-2 sentences]
+Portfolio impact: [Asset class] [X.X]% -> [Y.Y]%
+Several buys: add a Before vs After table (Asset Class | Current | Post-Action), no benchmark column.
+OUTPUT: Part 1 "INTERNAL CHECK" (3-5 lines). Part 2 "RECOMMENDATION" in the format above. Then a line "=== CLIENT EMAIL ===" followed by "Subject: ..." and the full client email in house style (Action / Rationale blocks).`},
+  {id:"replace", name:"Exit & replace", skill:"replacement-recommendation", desc:"For a holding whose thesis is broken: a full EXIT + ENTER swap, sized, with status PENDING.", email:true, hint:"e.g. Exit the position selected; prefer a USD short-duration replacement",
+   rules:`SKILL replacement-recommendation:
+Only recommend replacement when the thesis is structurally broken (sanctions, issuer distress, past maturity, secular decline) or a clearly superior alternative exists. A 5-15% drawdown in a broad correction is not a trigger. If the selected holding does not qualify, say so plainly and give a concrete hold/trim stance instead.
+Format:
+REPLACEMENT RECOMMENDATION - [Client number] | Status: PENDING
+EXIT: [Full name] ([Ticker/ISIN]) - Current value ~USD [x] ([X.X]% of portfolio) - Proceeds ~USD [x]
+WHY WE ARE EXITING: * Original thesis * What has changed * Why recovery is unlikely * Cost of staying
+ENTER: BUY [Full name] ([Ticker/ISIN]) - Size USD [x] ([X.X]% of portfolio), funded from exit proceeds (explain any gap)
+WHY THIS SPECIFIC REPLACEMENT: * Why this instrument (yield, duration, quality, AUM, cost) * Why it fits this portfolio (holdings, currency, gaps) * Current market context
+Portfolio impact: [Asset class] X.X% -> Y.Y% (or "No change to asset class weight - quality upgrade within ...")
+The replacement must be liquid and buyable in a private banking account, chosen for THIS portfolio.
+Then a line "=== CLIENT EMAIL ===" followed by "Subject: ..." and the client email in house style using the Action / Rationale block.`},
+  {id:"order", name:"Trade instruction to BAS", skill:"support-order-email", desc:"Turns approved buys and sells into the operational email to BAS-SUPPORT TEAM 2.", email:true, toTeam:true, hint:"e.g. Sell 200 META at market; buy 1,000 IAU limit 78.50 day order from USD Advisory Current Account; place USD 300,000 monthly deposit with Banque Audi",
+   rules:`SKILL support-order-email (operational, NOT the client house style):
+To: BAS-SUPPORT TEAM 2. Subject: "[Client Number] - Trade Orders" (trades only) / "[Client Number] - Placement Instructions" (placements only) / "[Client Number] - Trade Orders and Placement Renewal" (both).
+Body:
+Dear Team,
+
+Kindly execute the following for client [Client Number]:
+
+**Trade Orders:**
+
+**Order N**
+Action:      BUY or SELL (uppercase)
+Quantity:    [X] units (bonds: nominal, still "units")
+Instrument:  [Full name, no abbreviations]
+ISIN:        [ISIN] (always; if unknown write [PLEASE CONFIRM ISIN])
+Price:       Market   (market orders: NO Order Type line)
+  or
+Price Limit: [CCY Price]
+Account:     [CCY] Advisory Current Account (always for BUY; if not given write [PLEASE CONFIRM])
+Order Type:  Day Order (or GTC (Good Till Cancelled)) for limit orders only
+
+**Placements:**
+1. Place [CCY Amount] in a monthly deposit with [Counterparty] at the latest prevailing rate. (conditions appended in bold after an en-dash)
+
+Thank you.
+No sign-off, no name, no pleasantries. No em-dashes. One order per block, blank line between. Omit an empty block and adjust the subject.
+OUTPUT: "Subject: ..." line, then the email. After the email, a short "FLAGS" list of any missing fields.`},
+  {id:"bonds", name:"Screen bonds", skill:"bond-screener", desc:"Relative-value and credit read on the fixed income sleeve or a pasted list. Internal, trader-style.", hint:"e.g. Paste ISINs with price, coupon, maturity, rating. Mandate: USD IG, 3-8y duration",
+   rules:`SKILL bond-screener (quick in-portal pass):
+Work like a senior IG/EM credit trader plus credit analyst. Find bonds cheap for a reason you can live with, not the highest yield.
+For each bond (from DATA or the pasted list): yield to worst (flag calls), approximate G-spread only if a Treasury level is supplied (otherwise say "needs curve"), modified duration (approximate), spread per unit duration, carry, price features (discount/premium, below-80 distress), rating and seniority, liquidity flags (size < USD 500m, minimum piece).
+Relative value: rank by rating x maturity fit; explain every cheap bond as technical (buy) or credit story (size it or pass). Flag BBB- / negative outlook crossover risk.
+Classify each as CORE, SATELLITE or AVOID with one line why. Then a portfolio-fit note for this client (duration, concentration, currency).
+State clearly at the top: this pass uses only the data in this portal and the pasted list; it has no live Treasury curve, OAS or issuer financials. List what to verify with the desk and in the full screen. Never invent spreads, ratings or financials.`},
+  {id:"monthly", name:"Month-end client email", skill:"monthly-valuation-email", desc:"End-of-month update from the portal's numbers: value, YTD, movers, drags with a stance.", email:true, hint:"e.g. October update; mention the HPE put and the gold position",
+   rules:`SKILL monthly-valuation-email (portal version, data comes from DATA instead of a PDF):
+Salutation table by client number: 308180 "Dear Abu Saad,", 334605 "Dear Abu Mohammed,", 377720 "Dear Your Excellency,", 697 "Dear Your Excellency,". Otherwise use the client's salutation field or "Dear [First Name],".
+Opening line exactly "Hope this email finds you well." Institutional "we". 100-200 word body.
+Paragraph 1: total value, valuation date, YTD return if available, 1-2 top performers with exact % and amount.
+Paragraph 2: what drove performance this month, then every drag mentioned gets a concrete stance today (maintain because..., reduce by X and redeploy into Y). Non-recoverable drags get an exit + named replacement. Do not mention a drag you cannot give a stance on. No deferrals ("we will revisit", "next review").
+Flags to consider: position P/L worse than -8%, single position > 20% of NAV, bond priced below 80, idle cash above 5% of NAV, deposits maturing within 30 days.
+No benchmarks. No hedging. If YTD is negative, end the body with: "We continue to monitor the portfolio closely and will reach out proactively if we believe any action is warranted."
+MACRO CONTEXT: this page cannot search the web. Do not invent market figures. Where macro context belongs, write one sentence in square brackets: [MACRO CONTEXT TO CONFIRM: what drove the month].
+Closing exactly as the house style. OUTPUT: "Subject: ..." line then the email.`},
+  {id:"note", name:"Investment note", skill:"investment-note-design", desc:"Draft content for a 2-page Audi Capital investment note on a PE, SP or deal idea.", hint:"e.g. Note on the structured product selected: autocall odds, barrier risk, recommendation",
+   rules:`SKILL investment-note-design (content draft for the house .docx format):
+Sections: 1 The opportunity, 2 The business / the structure, 3 What we like (or Is the price right?), What you could earn (illustrative scenario table if it helps, state whether fees are included), Key risks, Portfolio fit (existing exposure), Recommendation (explicit: invest / do not proceed / not for now; if negative or conditional, numbered conditions that would change our view).
+If recommending to invest: instrument, amount in currency and % of total portfolio, funding source, before/after asset class weight.
+American English, hyphens not em-dashes, institutional "we". Numbers anchor every claim; never invent data. Mark undisclosed figures as "undisclosed" and list them under "Information requests". Target 2 pages of content. Title line "<Asset> - Investment Note" and subtitle "<instrument> | Strictly private and confidential | <Month Year>".
+Note at the end: "Ask Claude in chat to build the branded .docx from this draft."`},
+];
+function clientContext(cid, focusKey){
+  const agg=aggregate(), c=S.clients[cid]||{}, cc=agg.byClient[cid]||{value:0,byAC:{}}, pf=perfOf(cid,cc);
+  const pos=agg.pos.filter(p=>p.cid===cid);
+  const r2=v=>v==null||!isFinite(v)?null:Math.round(v*100)/100, p1=v=>v==null||!isFinite(v)?null:Math.round(v*1000)/10;
+  const row=p=>{ const o={name:p.name, class:AC[p.ac].label, source:p.src, ticker:p.sym||undefined, isin:p.isin||p.h?.isin||undefined, ccy:p.ccy, qty:r2(p.qty), price:r2(p.px), priceOverridden:p.ov?true:undefined,
+    valueUSD:r2(p.valueUSD), weightPct: cc.value&&p.valueUSD!=null?p1(p.valueUSD/cc.value):null, unrealizedPct:p1(p.upl), dayPct:p1(p.dayPct)};
+    if(p.sym){ const r=S.live.rat[p.sym]; if(r){ o.analysts={buy:+r.num_buy_ratings,hold:+r.num_hold_ratings,sell:+r.num_sell_ratings, ptMean:num(r.mean_price_target), ptHigh:num(r.high_price_target), ptLow:num(r.low_price_target)}; } const n=nextEarn(p.sym); if(n) o.nextEarnings=n.date; }
+    if(p.ac==="fi") Object.assign(o,{couponPct:p.x.coupon, maturity:p.x.maturity, ytmPct:p.x.ytm!=null?p1(p.x.ytm):null, rating:p.x.rating||undefined, nextCoupon:p.x.nextCpn});
+    if(p.ac==="cash"&&p.x.kind==="td") Object.assign(o,{ratePct:p.x.rate, maturity:p.x.maturity});
+    if(p.ac==="pe") Object.assign(o,{commitment:p.x.commitment, called:p.x.called, distributed:p.x.dist, navDate:p.x.navDate, tvpi:r2(p.x.tvpi)});
+    if(p.ac==="sp") Object.assign(o,{issuer:p.x.issuer, underlyings:p.x.unders.map(u=>({sym:u.sym, initial:u.init, perfPct:p1(u.perf)})), barrierPct:p.x.barrier, autocallPct:p.x.autocall, distToBarrierPts:r2(p.x.distB), nextObservation:p.x.nextObs, maturity:p.x.maturity});
+    if(p.ac==="option") Object.assign(o,{underlying:p.x.under, type:p.x.optType, strike:p.x.strike, expiry:p.x.expiry, side:p.x.side, delta:r2(p.x.delta), moneynessPct:p1(p.x.mny)});
+    return o; };
+  const out={asOf:TODAY(), client:{name:c.name, clientNumber:c.number||null, salutation:c.salutation||null, custodian:c.custodian||null, mandate:c.mandate||null},
+    totals:{valueUSD:r2(cc.value), dayPct:p1(pf.day), mtdPct:p1(pf.mtd), ytdPct:p1(pf.ytd), sinceInceptionPct:p1(pf.inc)},
+    assetClassWeightsPct:Object.fromEntries(AC_ORDER.filter(k=>cc.byAC[k]).map(k=>[AC[k].label,p1(cc.byAC[k]/cc.value)])),
+    holdings:pos.sort((a,b)=>(b.valueUSD||0)-(a.valueUSD||0)).map(row),
+    upcoming:buildEvents(pos,30).map(e=>({date:e.date,type:e.type,label:e.label})),
+    pendingRecommendations:Object.values(S.drafts).filter(d=>d.clientId===cid&&d.status==="PENDING").map(d=>({date:iso(d.at),subject:d.subject}))};
+  if(focusKey){ const f=pos.find(p=>p.key===focusKey); if(f) out.selectedHolding=row(f); }
+  return out;
+}
+let gen=null;
+function openSkill(id, cid, key){
+  currentDraftId=null; const sk=SKILLS.find(s=>s.id===id); const clients=Object.values(S.clients);
+  if(!cid || !S.clients[cid]) cid = S.view==="client" ? S.clientId : clients[0]?.id;
+  const focus = key ? aggregate().pos.find(p=>p.key===key) : null;
+  modal(`${esc(sk.name)}`, `
+    <div class="note">Runs your <code class="num">${sk.skill}</code> skill rules on this client's live portal data${sk.email?", then applies your email style":""}. Uses your Claude usage.</div>
+    <div class="form">
+      <label class="f">Client<select id="skClient">${clients.map(c=>`<option value="${esc(c.id)}" ${c.id===cid?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
+      <label class="f">Selected holding<input id="skFocus" value="${esc(focus?focus.name:"None")}" readonly data-k="${esc(key||"")}"></label>
+    </div>
+    <label class="f">Your instructions<textarea id="skInstr" rows="3" placeholder="${esc(sk.hint)}"></textarea></label>
+    ${id==="bonds"?`<label class="f">Bonds to screen (optional, paste a list)<textarea id="skExtra" rows="4" placeholder="ISIN, issuer, coupon, maturity, price, rating"></textarea></label>`:""}
+    <div class="acts"><button class="btn pri" id="skGo" data-act="generate" data-v="${id}">Generate draft</button><button class="btn" id="skStop" data-act="stopGen" hidden>Stop</button><span class="statusline" id="skStatus"></span></div>
+    <div id="skOutWrap" hidden>
+      ${sk.email?`<div class="form"><label class="f">To<input id="skTo" placeholder="${sk.toTeam?"BAS support team address":"client email"}" value="${esc(sk.toTeam?(S.settings.basEmail||""):(S.clients[cid]?.email||""))}"></label><label class="f">Subject<input id="skSubj"></label></div>`:""}
+      <label class="f">Draft (edit freely)<textarea class="out" id="skOut"></textarea></label>
+    </div>`,
+    `<span class="note" style="margin-right:auto" id="skFootNote"></span>
+     <button class="btn" data-act="copyOut">Copy</button>
+     <button class="btn" data-act="saveDraft" data-v="${id}">Save to tracker</button>
+     ${sk.email?`<button class="btn pri" data-act="gmail" data-v="${id}">Save to Gmail drafts</button>`:""}`);
+  if(!sample){ $("#skGo").disabled=true; $("#skStatus").textContent="Claude is not available in this view. Open the portal on claude.ai, or ask Claude in chat to run the skill."; }
+}
+async function generate(id){
+  const sk=SKILLS.find(s=>s.id===id), cid=$("#skClient").value, key=$("#skFocus").dataset.k||null;
+  const instr=$("#skInstr").value.trim(), extra=$("#skExtra")?.value.trim();
+  const ctx=clientContext(cid,key);
+  const prompt = `You are drafting on behalf of Ralph Boustani, investment advisor at Audi Capital Wealth Management Advisory. Follow the skill rules exactly.
+
+${sk.rules}
+
+${sk.email && id!=="order" ? STYLE : ""}
+
+DATA RULES: Use only figures in DATA (values in USD unless a ccy is given; percentages already in %). Never invent prices, ISINs, ratings, spreads or market news. Where a needed figure is missing write [PLEASE CONFIRM: what]. Prices marked priceOverridden were set manually by the advisor. Recommendations must be specific and sized.
+
+ADVISOR INSTRUCTIONS: ${instr || "(none: use judgment based on DATA and the selected holding)"}
+${extra?`\nBOND LIST PASTED BY ADVISOR:\n${extra}\n`:""}
+DATA (JSON):
+${JSON.stringify(ctx)}
+
+Write the output now. Plain text; markdown bold (**text** or __text__) is allowed where the format uses it.`;
+  const out=$("#skOut"), st=$("#skStatus"), go=$("#skGo"), stop=$("#skStop");
+  $("#skOutWrap").hidden=false; out.value=""; st.textContent="Thinking…"; go.disabled=true; stop.hidden=false;
+  gen=new AbortController();
+  try{
+    const r=await sample(prompt,{signal:gen.signal, cache:false, onText:({text})=>{ out.value=text; st.textContent="Writing…"; }});
+    finishOut(r.text, id); st.textContent = r.truncated ? "Cut short. Ask for less at a time." : "Draft ready. Review every figure before sending.";
+  }catch(e){
+    if(e.text) out.value=e.text;
+    st.textContent = {cancelled:"Stopped.", not_granted:"Claude is not allowed for this page. Allow it from the artifact's Permissions menu.", sampling_disabled:"Claude is not available for this account.", rate_limited:"Usage limit reached. Try again later.", refused:"Claude declined this request. Rephrase the instructions.", prompt_too_large:"Too much data for one draft. Narrow the instructions."}[e.code] || "The draft was interrupted. Try again.";
+    if(e.code==="refused") out.value="";
+  }finally{ go.disabled=false; stop.hidden=true; gen=null; }
+}
+function finishOut(text, id){
+  let t=text.replace(/—/g," - "); const out=$("#skOut");
+  const sk=SKILLS.find(s=>s.id===id);
+  if(sk.email){
+    const part = t.includes("=== CLIENT EMAIL ===") ? t.split("=== CLIENT EMAIL ===").pop() : t;
+    const m=/^\s*Subject:\s*(.+)$/m.exec(part); if(m && $("#skSubj")) $("#skSubj").value=m[1].trim();
+  }
+  out.value=t;
+  $("#skFootNote").textContent = /\[PLEASE CONFIRM/i.test(t) ? "Contains [PLEASE CONFIRM] items." : "";
+}
+function emailBody(){
+  const t=$("#skOut").value; let part = t.includes("=== CLIENT EMAIL ===") ? t.split("=== CLIENT EMAIL ===").pop() : t;
+  part = part.replace(/^\s*Subject:.*\n?/m,"").replace(/^\s+/,"");
+  return part;
+}
+const mdToHtml = s => esc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/__(.+?)__/g,"<b>$1</b>").replace(/\n/g,"<br>");
+const mdToPlain = s => s.replace(/\*\*(.+?)\*\*/g,"$1").replace(/__(.+?)__/g,"$1");
+async function toGmail(id){
+  if(!mcp){ toast("Gmail needs the claude.ai viewer."); return; }
+  const to=($("#skTo")?.value||"").split(/[,;\s]+/).filter(x=>/@/.test(x)), subject=$("#skSubj")?.value||"", body=emailBody();
+  if(!body.trim()){ toast("Generate a draft first."); return; }
+  const btn=document.querySelector('[data-act="gmail"]'); btn.disabled=true; btn.textContent="Saving…";
+  try{
+    const r=await mcp.callTool(GM,"create_draft",{to, subject, body:mdToPlain(body), htmlBody:mdToHtml(body)});
+    const url=r.payload?.viewUrl; btn.textContent="Saved to Gmail";
+    $("#skFootNote").innerHTML = url ? `Saved. <a href="${esc(url)}" target="_blank" rel="noopener">Open in Gmail</a>` : "Saved to your Gmail drafts.";
+    await saveDraft(id, true, url);
+  }catch(e){
+    btn.disabled=false; btn.textContent="Save to Gmail drafts";
+    $("#skFootNote").textContent = ["server_unavailable","upstream_error","tool_error"].includes(e.code) ? "Gmail did not confirm. Check your drafts before trying again." : errText("Gmail",e);
+  }
+}
+async function saveDraft(id, gmail, url){
+  if(!db){ toast("Saved data is unavailable."); return; }
+  const text=$("#skOut").value; if(!text.trim()){ toast("Generate a draft first."); return; }
+  const cid=$("#skClient").value, d={clientId:cid, skill:id, subject:$("#skSubj")?.value || (text.match(/^\s*(?:Subject:\s*)?(.{0,90})/)||[])[1] || "", text, status:"PENDING", at:Date.now(), by:S.me};
+  if(gmail){ d.gmail=true; if(url) d.gmailUrl=url; }
+  try{ const ref = currentDraftId ? db.doc("drafts/"+currentDraftId) : db.collection("drafts").doc(); currentDraftId=ref.id; await ref.set(d); toast(gmail?"Saved to Gmail and the tracker":"Saved to the recommendation tracker"); }catch(e){ toast(e.code==="quota_exceeded"?"Storage is full. Delete old drafts.":"Could not save the draft."); }
+}
+let currentDraftId=null;
+
+// ---------- company tracker ----------
+async function openCompany(sym){
+  const q=S.live.quotes[sym], r=S.live.rat[sym], earn=S.live.earn[sym]||[], held=aggregate().pos.filter(p=>p.sym===sym);
+  const m=num(r?.mean_price_target), hi=num(r?.high_price_target), lo=num(r?.low_price_target), p=q?.px;
+  const span = hi!=null&&lo!=null&&hi>lo ? [Math.min(lo,p??lo), Math.max(hi,p??hi)] : null; const at=v=>span?((v-span[0])/(span[1]-span[0])*100).toFixed(1)+"%":"0";
+  modal(esc(sym), `
+    <div class="kpis">
+      <div class="kpi"><span class="eyebrow">Last</span><span class="v">${px(p)}</span><span class="s ${cls(p&&q?.adjusted_previous_close?p/num(q.adjusted_previous_close)-1:null)}">${q?pct(p/num(q.adjusted_previous_close)-1)+" vs prior close":"No live quote"}</span></div>
+      <div class="kpi"><span class="eyebrow">Consensus PT</span><span class="v">${m!=null?px(m):"–"}</span><span class="s">${m!=null&&p?pct(m/p-1,1)+" upside":r===null?"No analyst coverage":"Price targets not available"}</span></div>
+      <div class="kpi"><span class="eyebrow">Ratings</span><span class="v num">${r?`${r.num_buy_ratings}/${r.num_hold_ratings}/${r.num_sell_ratings}`:"–"}</span><span class="s">buy / hold / sell${r?.updated_at?" · "+fmtDs(r.updated_at):""}</span></div>
+    </div>
+    ${span?`<div><div class="eyebrow">PT range ${px(lo)} – ${px(hi)}</div><div class="range">${m!=null?`<b style="left:${at(m)}" title="Mean PT"></b>`:""}${p!=null?`<i style="left:${at(p)}" title="Price"></i>`:""}</div><div class="muted small">Black mark: price · Blue mark: mean target</div></div>`:""}
+    <div><h3>Held by</h3><div class="muted small">${held.map(h=>`${esc(cname(h.cid))} · ${h.qty!=null?nf2.format(h.qty):""} · ${S.ccy} ${dmoney(h.valueUSD)}`).join("<br>")||"Not held"}</div></div>
+    <div><h3>Earnings</h3>${earn.length?`<div class="tbl-wrap"><table><thead><tr><th>Quarter</th><th>Date</th><th class="r">EPS est.</th><th class="r">Actual</th><th class="r">Surprise</th></tr></thead><tbody>${earn.slice(-6).reverse().map(e=>{ const es=num(e.eps?.estimate), a=num(e.eps?.actual); return `<tr><td>Q${e.quarter} ${e.year}</td><td class="num">${fmtD(e.report?.date)}${e.report?.verified===false?" <span class='muted small'>tentative</span>":""}</td><td class="r num">${es!=null?es.toFixed(2):"–"}</td><td class="r num">${a!=null?a.toFixed(2):"<span class='muted'>upcoming</span>"}</td><td class="r num ${cls(a!=null&&es?a-es:null)}">${a!=null&&es?pct(a/es-1,1):""}</td></tr>`; }).join("")}</tbody></table></div>`:`<div class="muted small">No earnings data${S.live.dataStatus==="busy"?" yet":""}.</div>`}</div>
+    <div><h3>News &amp; filings</h3><div id="filings" class="muted small">Loading SEC filings…</div><div class="note">Headlines are not available from your connectors. Filings and analyst changes are shown instead.</div></div>`,
+    `<button class="btn" data-act="skill" data-v="buy" data-c="${esc(held[0]?.cid||"")}" data-k="${esc(held[0]?.key||"")}">Buy recommendation</button>`);
+  if(!mcp){ $("#filings").textContent="Filings need the claude.ai viewer."; return; }
+  try{
+    const since=iso(new Date(Date.now()-120*864e5));
+    const res=S.live.filings[sym] || (await call(RH,"get_sec_filing_index",{symbol:sym, since},false,6*60*60e3)).p?.data?.filings || [];
+    S.live.filings[sym]=res;
+    const el=$("#filings"); if(!el) return;
+    const major=res.filter(f=>f.form_type!=="4"), insiders=res.filter(f=>f.form_type==="4");
+    el.innerHTML = (major.length?`<div class="list">${major.slice(0,10).map(f=>`<div class="li"><span class="when">${fmtDs(f.date_filed)}</span><div><span class="tag">${esc(f.form_type)}</span> ${esc(f.description||"")}</div><span></span></div>`).join("")}</div>`:`<div>No 8-K, 10-Q or 10-K filings in the last 120 days.</div>`)
+      + (insiders.length?`<div style="margin-top:6px">${insiders.length} insider transaction filings (Form 4) since ${fmtDs(since)}.</div>`:"");
+  }catch(e){ const el=$("#filings"); if(el) el.textContent = errText("Robinhood",e); }
+}
+
+// ---------- overrides ----------
+function openOverride(key){
+  const p=aggregate().pos.find(x=>x.key===key); if(!p) return;
+  const unit = p.ac==="fi"||p.ac==="sp" ? "% of par" : p.ac==="pe" ? "NAV amount" : "per unit";
+  modal(`Override price`, `
+    <div><b>${esc(p.name)}</b> <span class="muted">${esc(cname(p.cid))}</span></div>
+    <dl class="kv"><dt>Live / source price</dt><dd class="num">${p.livePx!=null?px(p.livePx):"none"} <span class="muted">${unit}</span></dd>${p.ov?`<dt>Current override</dt><dd class="num">${px(p.ov.price)} · ${esc(p.ov.reason)} · ${fmtT(p.ov.at)}</dd>`:""}</dl>
+    <div class="form"><label class="f">New price (${unit})<input id="ovPrice" type="number" step="any" inputmode="decimal" value="${p.ov?esc(p.ov.price):""}"></label>
+    <label class="f">Reason (required)<input id="ovReason" placeholder="e.g. Desk quote from ENBD 24 Oct" value=""></label></div>
+    <div class="note">The override stays until you clear it, replaces the live price in every total, and is logged with time and reason.</div>
+    <div class="statusline" id="ovStatus"></div>`,
+    `${p.ov?`<button class="btn danger" data-act="clearOv" data-k="${esc(key)}">Clear override</button>`:""}<button class="btn pri" data-act="saveOv" data-k="${esc(key)}">Save override</button>`);
+}
+async function logAudit(entry){
+  const m=TODAY().slice(0,7), cur=S.audit[m]?.entries||[];
+  try{ await db.doc("audit/"+m).set({entries:[...cur, entry].slice(-500)}); }catch(_){}
+}
+async function saveOv(key){
+  const p=aggregate().pos.find(x=>x.key===key), v=num($("#ovPrice").value), reason=$("#ovReason").value.trim();
+  if(v==null){ $("#ovStatus").textContent="Enter a price."; return; } if(!reason){ $("#ovStatus").textContent="Enter a reason. It goes in the audit log."; return; }
+  if(!db){ $("#ovStatus").textContent="Saved data is unavailable, so overrides cannot be stored."; return; }
+  try{
+    await db.doc("overrides/"+key).set({price:v, reason, at:Date.now(), by:S.me, label:p?.name||key, livePrice:p?.livePx??null});
+    await logAudit({at:Date.now(), by:S.me, key, label:p?.name||key, action:"set", oldPrice:p?.ov?.price ?? p?.livePx ?? null, newPrice:v, live:p?.livePx??null, reason});
+    closeModal(); toast("Override saved");
+  }catch(e){ $("#ovStatus").textContent="Could not save. "+(e.code||""); }
+}
+async function clearOv(key){
+  const o=S.overrides[key]; if(!o||!db) return;
+  try{ await db.doc("overrides/"+key).delete(); await logAudit({at:Date.now(), by:S.me, key, label:o.label||key, action:"clear", oldPrice:o.price, newPrice:null, live:o.livePrice??null, reason:"Cleared"}); closeModal(); toast("Override cleared"); }catch(_){ toast("Could not clear the override."); }
+}
+
+// ---------- holdings form ----------
+const FIELDS = {
+  cash:[["kind","Type","select",[["td","Time deposit"],["cash","Cash"]]],["bank","Bank / custodian"],["ccy","Currency"],["principal","Amount","num"],["rate","Rate % p.a.","num"],["start","Start date","date"],["maturity","Maturity date","date"],["basis","Day count basis (360 or 365)","num"]],
+  fi:[["name","Bond / sukuk name"],["isin","ISIN"],["ccy","Currency"],["face","Face value","num"],["coupon","Coupon %","num"],["freq","Coupons per year","num"],["maturity","Maturity","date"],["costPx","Cost price (% of par)","num"],["price","Current price (% of par)","num"],["priceDate","Price date","date"],["rating","Rating"]],
+  equity:[["name","Name"],["symbol","Ticker (US tickers price live)"],["isin","ISIN"],["ccy","Currency"],["qty","Quantity","num"],["costPx","Average cost per share","num"],["price","Manual price (used when there is no live quote)","num"],["custodian","Custodian"]],
+  pe:[["name","Fund"],["manager","Manager"],["ccy","Currency"],["commitment","Commitment","num"],["called","Called to date","num"],["distributed","Distributed to date","num"],["nav","Latest NAV (your share)","num"],["navDate","NAV date","date"],["vintage","Vintage"]],
+  sp:[["name","Product name"],["issuer","Issuer"],["isin","ISIN"],["ccy","Currency"],["notional","Notional","num"],["costPx","Cost price %","num"],["price","Indicative price %","num"],["coupon","Coupon % p.a.","num"],["underlyings","Underlyings with initial levels (AAPL:230, MSFT:410)"],["barrier","Barrier % of initial","num"],["autocall","Autocall % of initial","num"],["nextObs","Next observation date","date"],["maturity","Maturity","date"]],
+  option:[["underlying","Underlying ticker"],["optType","Type","select",[["call","Call"],["put","Put"]]],["side","Side","select",[["long","Long"],["short","Short"]]],["strike","Strike","num"],["expiry","Expiry","date"],["qty","Contracts","num"],["mult","Multiplier","num"],["costPx","Premium per share at entry","num"],["price","Current price per share","num"],["ccy","Currency"]],
+};
+function holdingForm(h){
+  const ac=h.ac||"fi";
+  const f=FIELDS[ac].map(([k,l,t,opts])=>{ const v=h[k]??(k==="ccy"?"USD":k==="freq"?2:k==="mult"?100:k==="basis"?360:""); const id="hf_"+k;
+    if(t==="select") return `<label class="f">${l}<select id="${id}" data-f="${k}">${opts.map(([ov,ol])=>`<option value="${ov}" ${String(v)===ov?"selected":""}>${ol}</option>`).join("")}</select></label>`;
+    return `<label class="f">${l}<input id="${id}" data-f="${k}" type="${t==="num"?"number":t==="date"?"date":"text"}" ${t==="num"?'step="any" inputmode="decimal"':""} value="${esc(v)}"></label>`; }).join("");
+  return `<div class="form"><label class="f">Client<select id="hf_clientId">${Object.values(S.clients).map(c=>`<option value="${esc(c.id)}" ${c.id===h.clientId?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
+    <label class="f">Asset class<select id="hf_ac" data-chg="hfAc">${AC_ORDER.map(k=>`<option value="${k}" ${k===ac?"selected":""}>${AC[k].label}</option>`).join("")}</select></label></div>
+    <div class="form" id="hfFields">${f}</div><label class="f">Notes<input id="hf_notes" value="${esc(h.notes||"")}"></label><div class="statusline" id="hfStatus"></div>`;
+}
+let editing=null;
+function openHolding(h){
+  editing={...h};
+  if(!Object.keys(S.clients).length){ modal("Add holding",`<div class="empty">Add a client first in Settings.</div>`,`<button class="btn pri" data-act="nav" data-v="settings">Go to Settings</button>`); return; }
+  modal(h.id?"Edit holding":"Add holding", holdingForm(editing), `${h.id?`<button class="btn danger" data-act="delHolding" data-v="${esc(h.id)}" style="margin-right:auto">Delete</button>`:""}<button class="btn" data-act="closeModal">Cancel</button><button class="btn pri" data-act="saveHolding">Save holding</button>`);
+}
+function readHolding(){
+  const h={...editing, clientId:$("#hf_clientId").value, ac:$("#hf_ac").value, notes:$("#hf_notes").value.trim()};
+  for(const [k,,t] of FIELDS[h.ac]){ const el=$("#hf_"+k); if(!el) continue; const v=el.value.trim(); h[k]= t==="num" ? num(v) : v; }
+  if(h.ccy) h.ccy=h.ccy.toUpperCase(); if(h.symbol) h.symbol=h.symbol.toUpperCase();
+  return h;
+}
+async function saveHolding(){
+  if(!db){ $("#hfStatus").textContent="Saved data is unavailable."; return; }
+  const h=readHolding(); const req={cash:"principal",fi:"face",equity:"qty",pe:"nav",sp:"notional",option:"qty"}[h.ac];
+  if(h[req]==null){ $("#hfStatus").textContent=`Enter the ${FIELDS[h.ac].find(f=>f[0]===req)[1].toLowerCase()}.`; return; }
+  const {id,...body}=h; Object.keys(body).forEach(k=>{ if(body[k]===undefined) delete body[k]; });
+  try{ const ref=id?db.doc("holdings/"+id):db.collection("holdings").doc(); await ref.set({...body, updatedAt:Date.now()}); closeModal(); toast("Holding saved"); }catch(e){ $("#hfStatus").textContent="Could not save. "+(e.code||""); }
+}
+
+// ---------- settings ----------
+function viewSettings(){
+  const rhAccts=S.live.rh.accounts||[], clients=Object.values(S.clients).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  const opt=sel=>`<option value="">Unassigned</option>`+clients.map(c=>`<option value="${esc(c.id)}" ${c.id===sel?"selected":""}>${esc(c.name)}</option>`).join("");
+  const fx=S.settings.fx||{}, cm=S.settings.classMap||{}, T=th();
+  const ccys=[...new Set([...Object.keys(fx), ...aggregate().fxMissing, "EUR","CHF","GBP","AED"])].filter(c=>c!=="USD"&&c!=="SAR");
+  const months=Object.keys(S.audit).sort().reverse(), entries=months.flatMap(m=>(S.audit[m].entries||[]).slice().reverse()).slice(0,40);
+  return `${banners()}<div><span class="eyebrow">Configuration</span><h1>Settings</h1></div>
+  <section class="panel"><div class="panel-h"><h2>Clients</h2><button class="btn pri sm" data-act="editClient">Add client</button></div>
+    ${clients.length?`<div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Client no.</th><th>Salutation</th><th>Email</th><th class="r">Dec 31 value (USD)</th><th></th></tr></thead><tbody>${clients.map(c=>`<tr><td>${esc(c.name)}</td><td class="num">${esc(c.number||"–")}</td><td>${esc(c.salutation||"–")}</td><td>${esc(c.email||"–")}</td><td class="r num">${money(num(c.ytdOpen))}</td><td class="r"><button class="btn sm" data-act="editClient" data-v="${esc(c.id)}">Edit</button></td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No clients yet. Add one, then map accounts below.</div>`}</section>
+  <section class="panel"><div class="panel-h"><h2>Broker accounts</h2><span class="muted small">Assign each account to a client</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Account</th><th>Type</th><th>Client</th></tr></thead><tbody>
+      <tr><td><span class="tag ib">IBKR</span> ${S.live.ib.positions?`${S.live.ib.positions.length} positions`:`<span class="muted">${S.live.ib.err?esc(S.live.ib.err):"not loaded"}</span>`}</td><td>${esc(S.live.ib.summary?.currency||"")}</td><td><select data-chg="mapAcct" data-v="ibkr" aria-label="Client for IBKR">${opt(S.accounts.ibkr?.clientId)}</select></td></tr>
+      ${rhAccts.map(a=>`<tr><td><span class="tag rh">RH</span> ${esc(a.nickname||a.brokerage_account_type)} <span class="num muted">${mask(a.account_number)}</span></td><td>${esc((a.brokerage_account_type||"").replace(/_/g," "))} · ${esc(a.type||"")}</td><td><select data-chg="mapAcct" data-v="rh-${esc(a.account_number)}" aria-label="Client for Robinhood ${mask(a.account_number)}">${opt(S.accounts["rh-"+a.account_number]?.clientId)}</select></td></tr>`).join("")}
+      ${!rhAccts.length?`<tr><td colspan="3" class="muted">${S.live.rh.err?esc(S.live.rh.err):"Robinhood accounts appear after the first refresh."}</td></tr>`:""}
+    </tbody></table></div></section>
+  <div class="grid2">
+  <section class="panel"><div class="panel-h"><h2>FX rates</h2><span class="muted small">USD per 1 unit · SAR fixed at the 3.75 peg</span></div>
+    <div class="panel-b"><div class="form">${ccys.map(c=>`<label class="f">${esc(c)} → USD<input type="number" step="any" inputmode="decimal" data-fx="${esc(c)}" id="fx_${esc(c)}" value="${esc(fx[c]??"")}" placeholder="enter rate"></label>`).join("")}
+      <label class="f">Add currency<input id="fxNew" placeholder="e.g. JPY" maxlength="3"></label></div>
+      <div class="acts" style="margin-top:10px"><button class="btn pri sm" data-act="saveFx">Save FX rates</button><span class="note">Rates are yours to maintain; the portal does not fetch FX.</span></div></div></section>
+  <section class="panel"><div class="panel-h"><h2>Asset class for listed tickers</h2></div>
+    <div class="panel-b"><div class="note">Broker positions default to Equity. Reclassify ETFs such as SGOV as Fixed Income or Cash.</div>
+      <label class="f" style="margin-top:8px">One per line, TICKER=class (cash, fi, equity, pe, sp, option)<textarea id="classMap" rows="5">${esc(Object.entries(cm).map(([k,v])=>k+"="+v).join("\n"))}</textarea></label>
+      <div class="acts" style="margin-top:10px"><button class="btn pri sm" data-act="saveClassMap">Save mapping</button></div></div></section>
+  </div>
+  <div class="grid2">
+  <section class="panel"><div class="panel-h"><h2>Alert thresholds</h2></div>
+    <div class="panel-b"><div class="form">${[["dayMove","Day move %"],["earnDays","Earnings within (days)"],["cpnDays","Coupon / maturity within (days)"],["barrierPts","SP within barrier (pts)"],["optDays","Option expiry within (days)"],["navDays","PE NAV stale after (days)"],["ovDays","Override stale after (days)"]].map(([k,l])=>`<label class="f">${l}<input type="number" step="any" id="th_${k}" value="${esc(T[k])}"></label>`).join("")}
+      <label class="f">BAS support team email<input id="basEmail" value="${esc(S.settings.basEmail||"")}" placeholder="for trade instruction drafts"></label></div>
+      <div class="acts" style="margin-top:10px"><button class="btn pri sm" data-act="saveThresh">Save</button></div></div></section>
+  <section class="panel"><div class="panel-h"><h2>Override audit log</h2></div>
+    ${entries.length?`<div class="tbl-wrap"><table><thead><tr><th>When</th><th>Holding</th><th class="r">Old</th><th class="r">New</th><th>Reason</th><th>By</th></tr></thead><tbody>${entries.map(e=>`<tr><td class="num">${fmtT(e.at)}</td><td>${esc(e.label)}</td><td class="r num">${px(e.oldPrice)}</td><td class="r num">${e.action==="clear"?"cleared":px(e.newPrice)}</td><td>${esc(e.reason)}</td><td class="muted">${e.by&&e.by===S.me?"You":"Editor"}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No overrides yet.</div>`}</section>
+  </div>
+  <section class="panel"><div class="panel-h"><h2>Manual holdings</h2><button class="btn sm" data-act="addHolding">Add holding</button></div>
+    ${Object.values(S.holdings).length?`<div class="tbl-wrap"><table><thead><tr><th>Holding</th><th>Class</th><th>Client</th><th>Updated</th><th></th></tr></thead><tbody>${Object.values(S.holdings).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(h=>`<tr><td>${esc(h.name||h.bank||h.symbol||h.underlying||"Holding")}</td><td>${AC[h.ac]?.label||""}</td><td>${esc(cname(h.clientId))}</td><td class="num">${fmtT(h.updatedAt)}</td><td class="r"><button class="btn sm" data-act="editHolding" data-v="${esc(h.id)}">Edit</button></td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Time deposits, off-platform bonds, PE funds and structured products go here.</div>`}</section>`;
+}
+function viewActions(){
+  return `${banners()}<div><span class="eyebrow">Your skills</span><h1>Actions</h1></div>
+  <div class="note">Each action reads the chosen client's live holdings from this portal, applies the rules of the named skill, and drafts in your house style. Drafts can be edited, copied, saved to the tracker, or saved to Gmail drafts. Nothing is sent or traded from here.</div>
+  <div class="skills">${SKILLS.map(s=>`<div class="skill"><h3>${esc(s.name)}</h3><code>${s.skill}${s.email?" + ralph-email-style":""}</code><div class="small">${esc(s.desc)}</div><div><button class="btn pri sm" data-act="skill" data-v="${s.id}">Start</button></div></div>`).join("")}</div>
+  <div class="note">The bond screener and investment note run a lighter in-portal version. For the full desk-grade screen with the Treasury curve and issuer financials, or the branded .docx note, ask Claude in chat.</div>`;
+}
+function openClient(id){
+  const c=id?S.clients[id]:{};
+  const F=[["name","Client name"],["number","Client number"],["salutation","Salutation (e.g. Dear Your Excellency,)"],["email","Email"],["custodian","Custodian"],["mandate","Mandate / risk profile"],["ytdOpen","Dec 31 portfolio value (USD)","num"],["flowsYtd","Net flows YTD (USD)","num"],["flowsMtd","Net flows MTD (USD)","num"],["income","Income received since inception (USD)","num"]];
+  modal(id?"Client details":"Add client", `<div class="form">${F.map(([k,l,t])=>`<label class="f">${l}<input id="cf_${k}" ${t==="num"?'type="number" step="any" inputmode="decimal"':""} value="${esc(c?.[k]??"")}"></label>`).join("")}</div>
+    <div class="note">Dec 31 value and flows drive YTD and MTD. MTD otherwise uses the value saved at each Refresh.</div><div class="statusline" id="cfStatus"></div>`,
+    `${id?`<button class="btn danger" data-act="delClient" data-v="${esc(id)}" style="margin-right:auto">Delete client</button>`:""}<button class="btn" data-act="closeModal">Cancel</button><button class="btn pri" data-act="saveClient" data-v="${esc(id||"")}">Save client</button>`);
+  modal.fields=F;
+}
+async function saveClient(id){
+  if(!db){ $("#cfStatus").textContent="Saved data is unavailable."; return; }
+  const o={}; for(const [k,,t] of modal.fields){ const v=$("#cf_"+k).value.trim(); o[k]= t==="num" ? num(v) : v; }
+  if(!o.name){ $("#cfStatus").textContent="Enter the client name."; return; }
+  try{ const ref=id?db.doc("clients/"+id):db.collection("clients").doc(); await ref.set(o); closeModal(); toast("Client saved"); }catch(e){ $("#cfStatus").textContent="Could not save. "+(e.code||""); }
+}
+
+// ---------- modal ----------
+function modal(title, body, foot){
+  $("#modalRoot").innerHTML = `<div class="modal-bg" data-act="bgClose"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title.replace(/<[^>]+>/g,""))}"><div class="modal-h"><h2>${title}</h2><button class="btn sm ghost" data-act="closeModal" aria-label="Close">Close</button></div><div class="modal-b">${body}</div>${foot?`<div class="modal-f">${foot}</div>`:""}</div></div>`;
+  const f=$("#modalRoot input:not([readonly]),#modalRoot textarea,#modalRoot select"); if(f) setTimeout(()=>f.focus(),30);
+}
+function closeModal(){ if(gen) gen.abort(); $("#modalRoot").innerHTML=""; currentDraftId=null; editing=null; }
+
+// ---------- events ----------
+const confirmOnce = (btn, label) => { if(btn.dataset.armed){ return true; } btn.dataset.armed="1"; const t=btn.textContent; btn.textContent=label; setTimeout(()=>{ if(btn.isConnected){ delete btn.dataset.armed; btn.textContent=t; } },4000); return false; };
+const ACT = {
+  nav:d=>{ closeModal(); if(d.v.startsWith("client:")){ S.view="client"; S.clientId=d.v.slice(7); } else S.view=d.v; window.scrollTo(0,0); render(); },
+  ccy:d=>{ S.ccy=d.v; try{ localStorage.setItem("cp_ccy",d.v); }catch(_){} render(); },
+  refresh:()=>refresh(true),
+  company:d=>openCompany(d.v),
+  override:d=>openOverride(d.k), saveOv:d=>saveOv(d.k), clearOv:(d,b)=>{ if(S.overrides[d.k] && confirmOnce(b,"Confirm clear")) clearOv(d.k); },
+  skill:d=>openSkill(d.v, d.c, d.k), generate:d=>generate(d.v), stopGen:()=>gen?.abort(),
+  copyOut:async()=>{ const t=$("#skOut")?.value||""; try{ await navigator.clipboard.writeText(t); toast("Copied"); }catch(_){ const o=$("#skOut"); o.focus(); o.select(); toast("Selected. Press Ctrl/Cmd+C to copy."); } },
+  saveDraft:d=>saveDraft(d.v,false), gmail:d=>toGmail(d.v),
+  openDraft:d=>{ const dr=S.drafts[d.v]; if(!dr) return; openSkill(dr.skill, dr.clientId); currentDraftId=d.v; $("#skOutWrap").hidden=false; $("#skOut").value=dr.text||""; if($("#skSubj")) $("#skSubj").value=dr.subject||""; $("#skStatus").textContent=`Saved ${fmtT(dr.at)} · ${dr.status}`; },
+  addHolding:d=>openHolding({clientId:d.c||S.clientId||Object.keys(S.clients)[0], ac:"fi"}),
+  editHolding:d=>{ const h=S.holdings[d.v]; if(h) openHolding(h); },
+  saveHolding:()=>saveHolding(),
+  delHolding:async(d,b)=>{ if(!confirmOnce(b,"Confirm delete")) return; try{ await db.doc("holdings/"+d.v).delete(); closeModal(); toast("Holding deleted"); }catch(_){ toast("Could not delete."); } },
+  editClient:d=>openClient(d.v), saveClient:d=>saveClient(d.v),
+  delClient:async(d,b)=>{ if(!confirmOnce(b,"Delete client? Click again")) return; try{ await db.doc("clients/"+d.v).delete(); closeModal(); S.view="settings"; toast("Client deleted. Their holdings are now unassigned."); }catch(_){ toast("Could not delete."); } },
+  saveFx:async()=>{ const fx={...(S.settings.fx||{})}; document.querySelectorAll("[data-fx]").forEach(i=>{ const v=num(i.value); if(v) fx[i.dataset.fx]=v; else delete fx[i.dataset.fx]; }); const nw=($("#fxNew").value||"").trim().toUpperCase(); if(/^[A-Z]{3}$/.test(nw) && !(nw in fx)) fx[nw]=null; await saveSettings({fx}); },
+  saveClassMap:async()=>{ const m={}; $("#classMap").value.split(/\n/).forEach(l=>{ const [k,v]=l.split("=").map(s=>(s||"").trim()); if(k && AC[(v||"").toLowerCase()]) m[k.toUpperCase()]=v.toLowerCase(); }); await saveSettings({classMap:m}); },
+  saveThresh:async()=>{ const t={}; Object.keys(DEF_TH).forEach(k=>{ const v=num($("#th_"+k).value); if(v!=null) t[k]=v; }); await saveSettings({thresholds:t, basEmail:$("#basEmail").value.trim()}); },
+  closeModal:()=>closeModal(), bgClose:(d,b,e)=>{ if(e.target===b) closeModal(); },
+};
+async function saveSettings(patch){ if(!db){ toast("Saved data is unavailable."); return; } const {id,...cur}=S.settings; try{ await db.doc("meta/settings").set({...cur,...patch}); toast("Saved"); }catch(_){ toast("Could not save settings."); } }
+document.addEventListener("click", e=>{ const t=e.target.closest("[data-act]"); if(!t) return; const f=ACT[t.dataset.act]; if(!f) return; if(t.dataset.act!=="bgClose") e.preventDefault(); const m=t.closest("details.menu"); if(m) m.open=false; f(t.dataset,t,e); });
+document.addEventListener("change", async e=>{
+  const t=e.target.closest("[data-chg]"); if(!t) return; const k=t.dataset.chg;
+  if(k==="mapAcct"){ if(!db) return; try{ await db.doc("accounts/"+t.dataset.v).set({clientId:t.value||null}); toast("Account mapped"); }catch(_){ toast("Could not save the mapping."); } }
+  if(k==="draftStatus"){ if(!db) return; try{ await db.doc("drafts/"+t.dataset.v).update({status:t.value, statusAt:Date.now()}); }catch(_){ toast("Could not update the status."); } }
+  if(k==="hfAc"){ editing={...readHolding(), ac:t.value}; $("#modalRoot .modal-b").innerHTML=holdingForm(editing); }
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && $("#modalRoot").innerHTML) closeModal(); });
+document.addEventListener("toggle", e=>{ if(e.target.matches?.("details.menu") && e.target.open) document.querySelectorAll("details.menu[open]").forEach(m=>{ if(m!==e.target) m.open=false; }); }, true);
+
+// ---------- boot ----------
+try{ const c=localStorage.getItem("cp_ccy"); if(c==="SAR"||c==="USD") S.ccy=c; }catch(_){}
+render();
+(async()=>{
+  const use = n => (window.claude && typeof window.claude.use==="function") ? window.claude.use(n).catch(()=>null) : Promise.resolve(null);
+  [mcp, db, user, sample] = await Promise.all([use("mcp"), use("db"), use("user"), use("sample")]);
+  S.mcpState = mcp ? "ok" : "none"; S.sampleOK=!!sample;
+  if(user){ try{ S.me = await user.id(); }catch(_){} }
+  if(db){
+    S.dbState="ok";
+    for(const [p,k] of [["clients","clients"],["accounts","accounts"],["holdings","holdings"],["overrides","overrides"],["drafts","drafts"],["snapshots","snapshots"],["audit","audit"]]) sub(p,k);
+    db.doc("meta/settings").onSnapshot(s=>{ S.settings=s.exists?s.data():{}; render(); }, ()=>{});
+    db.doc("meta/pt").onSnapshot(s=>{ S.pt=s.exists?s.data():{}; render(); }, ()=>{});
+  } else S.dbState="none";
+  render();
+  if(mcp) refresh(false);
+})();
+})();
+</script>

@@ -48,8 +48,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # after market-data, take the branch tip so its fresh commit is included
-          ref: ${{ github.event_name == 'workflow_run' && github.event.repository.default_branch || '' }}
+          # always the branch tip when the job starts, never the commit the run was queued on: a run that waited
+          # behind another send must see the sent/ marker that run committed (25.10.2026: the brief went out twice)
+          ref: ${{ github.event.repository.default_branch }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

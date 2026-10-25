@@ -42,6 +42,28 @@ for n, i in items.items():
         if i.get("partial"): warn(f"{n}: partial data")
     except Exception: warn(f"{n}: no asOf")
 
+# 1b. prices the feed's cross-check could not confirm (crosscheck.py): no level, move or chart of them in the brief
+_draws = set()
+for _ch in [ch for c in C.get("p2", {}).get("cards", []) for ch in c.get("charts", [])] + list(C.get("p2", {}).get("extras_left", []) or []) + list(C.get("p2", {}).get("extras_right", []) or []):
+    _t = _ch.get("type")
+    if _t == "commodities": _draws |= {"Brent", "WTI", "Gold"}
+    elif _t == "rebased": _draws |= set(_ch.get("names") or ["Brent", "Gold", "Dollar Index"])
+    elif _t in ("storyline", "levelchart"): _draws.add(_ch.get("name", ""))
+    elif _t in ("index_board", "ytd", "week", "month", "scorecard", "heatmap"): _draws |= {"S&P 500", "Nasdaq Composite", "Dow Jones", "STOXX 600", "DAX", "CAC 40", "FTSE 100", "Nikkei 225", "Hang Seng", "Sensex", "CSI 300", "Tadawul TASI"}
+    elif _t in ("rates", "rates_trend"): _draws |= {"US 2Y yield", "US 10Y yield", "US 30Y yield"}
+_short = {"Nasdaq Composite": "Nasdaq", "Dow Jones": "Dow", "Nikkei 225": "Nikkei", "Tadawul TASI": "TASI"}
+_txt_all = alltext + " " + (open(txt, encoding="utf-8").read() if txt else "")
+for n, i in items.items():
+    if not i.get("check"): continue
+    a = _short.get(n, n)
+    quoted = re.search(re.escape(a) + r"[^.;\n]{0,40}?\d", _txt_all)
+    drawn = n in _draws or a in _draws
+    if quoted or drawn:
+        warn("FACTS (fix, do not justify): " + f"{a} is unconfirmed today ({i['check']}): print no {a} level or move "
+             f"and use no chart that draws it{' (a page-2 chart draws it now)' if drawn else ''}; describe it in words")
+    else:
+        OK.append(f"{a} is unconfirmed today and kept out of the brief")
+
 # 2. figures quoted in text vs market_data.json
 ALIAS = {"S&P 500": ["S&P 500"], "Nasdaq Composite": ["Nasdaq"], "Dow Jones": ["Dow"], "STOXX 600": ["STOXX 600"], "DAX": ["DAX"],
          "CAC 40": ["CAC 40"], "FTSE 100": ["FTSE 100"], "Nikkei 225": ["Nikkei"], "Hang Seng": ["Hang Seng"], "Sensex": ["Sensex"],

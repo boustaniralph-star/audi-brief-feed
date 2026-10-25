@@ -139,10 +139,18 @@ def data_check_alert():
     if md.get("generatedAt", "")[:10] != ISO:
         return
     flagged = [i["check"] for i in md.get("items", []) if i.get("check")]
-    if not flagged:
+    fixed = [f"{i['name']} {i['asOf']}: {i['corrected']['from']} -> {i['corrected']['to']} ({i['corrected']['why']})"
+             for i in md.get("items", []) if i.get("corrected")]
+    if not flagged and not fixed:
         return
-    alert(f"Unconfirmed prices {STAMP}", "The market-data cross-check could not confirm these closes, so the brief must "
-          "not print them or chart them today (pulse_check enforces it):\n\n" + "\n".join("- " + f for f in flagged))
+    body = ""
+    if flagged:
+        body += ("Unconfirmed (no two sources agree), so the brief must not print or chart them today (pulse_check "
+                 "enforces it):\n" + "\n".join("- " + f for f in flagged) + "\n\n")
+    if fixed:
+        body += ("Corrected (the feed's figure disagreed, two other sources agree; the brief uses the corrected "
+                 "figure):\n" + "\n".join("- " + f for f in fixed) + "\n")
+    alert(f"{'Unconfirmed' if flagged else 'Corrected'} prices {STAMP}", body)
     os.makedirs(os.path.dirname(mark), exist_ok=True)
     json.dump({"flagged": flagged}, open(mark, "w")); out("commit", "true")
     print("unconfirmed-price alert sent")

@@ -49,3 +49,7 @@
 24-10-2026 | Tech Brew | SKIMMED | 0
 24-10-2026 | SoFi | SKIMMED | 0
 24-10-2026 | Ground News | SKIMMED | 0
+25-10-2026 | EnterpriseAM Saudi | READ | 0
+25-10-2026 | Bloomberg | READ | 0
+25-10-2026 | Investopedia | READ | 0
+25-10-2026 | Reuters | SKIMMED | 0

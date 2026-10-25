@@ -53,6 +53,20 @@ def alert(subject, body):
         print("alert send failed:", type(e).__name__)
 
 
+def already_emailed():
+    """True when today's brief is already in the owner's Sent mail: the guard that still holds if the sent/ marker
+    was not visible to this run (25.10.2026: two runs a minute apart both sent the brief)."""
+    subject = f"Morning Briefing - {NOW.strftime('%A')}, {NOW.strftime('%d %B %Y')}"
+    try:
+        M = imaplib.IMAP4_SSL("imap.gmail.com"); M.login(USER, PW); M.select('"[Gmail]/Sent Mail"', readonly=True)
+        typ, d = M.search(None, "X-GM-RAW", f'"subject:(\\"{subject}\\") newer_than:1d"')
+        M.logout()
+        return typ == "OK" and bool(d[0].split())
+    except Exception as e:
+        print("sent-mail check skipped:", type(e).__name__)
+        return False
+
+
 def find_package():
     M = imaplib.IMAP4_SSL("imap.gmail.com")
     M.login(USER, PW); M.select("INBOX")
@@ -205,6 +219,11 @@ def detect():
         print("held for the owner; run brief-send with release to send it"); out("found", "false"); return 0
     stale_feed_watchdog()
     data_check_alert()
+    if USER and PW and not RELEASE and already_emailed():
+        print("today's brief is already in Sent; not sending again")
+        os.makedirs(os.path.dirname(MARK), exist_ok=True)
+        json.dump({"mode": MODE, "note": "found in Sent by a later run"}, open(MARK, "w")); out("commit", "true")
+        out("found", "false"); return 0
     body = find_package() if (USER and PW and TOKEN) else None
     if body is None:
         hr = NOW.astimezone(dt.timezone.utc).hour * 60 + NOW.astimezone(dt.timezone.utc).minute

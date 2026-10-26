@@ -323,18 +323,47 @@ def send():
             sec["TXT"] = t
             break
     if not ok:
-        # no layout variant built: the text brief still goes out, so no edition is ever lost
-        print(log)
-        if DRY:
-            print("[dry run] no PDF variant built; would send the text brief"); return 0
-        msg = EmailMessage(); msg["From"] = USER; msg["To"] = ", ".join(RECIP)
-        subject = f"Morning Briefing - {NOW.strftime('%A')}, {NOW.strftime('%d %B %Y')}"
-        msg["Subject"] = ("[CLOUD TEST] " if MODE == "test" else "") + subject
-        msg.set_content(txt)
-        smtp_send(msg)
-        json.dump({"mode": MODE, "sentAt": NOW.strftime("%H:%M"), "pdf": False, "recipients": len(RECIP)}, open(MARK, "w"))
-        alert(f"Brief sent as text only {STAMP}", f"No PDF layout built (builder exit {b.returncode}); the text brief was sent.\n\n{log}")
-        print("sent", MODE, "text only"); return 0
+        # Ralph, 26.10.2026: "everything should be clockwork" - a PDF with the disclaimer page always goes out.
+        # Second pass: the richest variant that built 3 pages even if the overlap check complained (a label touching
+        # a line beats no PDF); last: the fallback layout, the text brief in house style plus the disclaimer page,
+        # which needs no charts or market data.
+        fallback = None
+        for label, c, h, t in variants:
+            json.dump(c, open(os.path.join(WORK, "content_v2.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+            json.dump(h, open(os.path.join(WORK, "hero_data.json"), "w", encoding="utf-8"), ensure_ascii=False)
+            open(txtp, "w", encoding="utf-8").write(t)
+            if os.path.exists(pdfp):
+                os.remove(pdfp)
+            b = subprocess.run([sys.executable, "build_brief_v2.py", "content_v2.json", "market_data.json", "hero_data.json", base + ".pdf"],
+                               cwd=WORK, capture_output=True, text=True)
+            npg = re.search(r"Pages:\s+(\d+)", subprocess.run(["pdfinfo", pdfp], capture_output=True, text=True).stdout or "") if os.path.exists(pdfp) else None
+            if npg and npg.group(1) == "3":
+                ok, fallback = True, f"layout '{label}' sent despite builder exit {b.returncode}"
+                sec["TXT"] = t
+                break
+        if not ok:
+            open(txtp, "w", encoding="utf-8").write(txt)
+            fb = subprocess.run([sys.executable, "build_brief_v2.py", "--fallback", base + ".txt", content.get("date", STAMP.replace(".", "-")), base + ".pdf"],
+                                cwd=WORK, capture_output=True, text=True)
+            ok = os.path.exists(pdfp)
+            fallback = "fallback layout (text brief and disclaimer page)" if ok else None
+            log += "\n" + (fb.stdout + fb.stderr)[-800:]
+        if ok:
+            fixes.append("no designed layout passed every check; sent " + fallback)
+            print("build: fallback ->", fallback)
+        else:
+            # the PDF engine itself is broken (the morning canary should have reported it): the text still goes out
+            print(log)
+            if DRY:
+                print("[dry run] no PDF could be built; would send the text brief"); return 0
+            msg = EmailMessage(); msg["From"] = USER; msg["To"] = ", ".join(RECIP)
+            subject = f"Morning Briefing - {NOW.strftime('%A')}, {NOW.strftime('%d %B %Y')}"
+            msg["Subject"] = ("[CLOUD TEST] " if MODE == "test" else "") + subject
+            msg.set_content(txt)
+            smtp_send(msg)
+            json.dump({"mode": MODE, "sentAt": NOW.strftime("%H:%M"), "pdf": False, "recipients": len(RECIP)}, open(MARK, "w"))
+            alert(f"Brief sent as text only {STAMP}", f"No PDF could be built, not even the fallback layout.\n\n{log}")
+            print("sent", MODE, "text only"); return 0
     # the writer's sandbox normally runs the full check before sending; when its shell was down it sends the package
     # marked "PRECHECK: not run" and this run does the full check (ledger, sources, facts and the page audit) instead
     unchecked = bool(re.search(r"^PRECHECK:\s*not run", body.split("=====TXT=====")[0], re.M | re.I))
@@ -432,5 +461,41 @@ def send():
     return 0
 
 
+def canary():
+    """Morning test build (Ralph, 26.10.2026: "everything should be clockwork"): after the market feed refreshes and
+    before the writer starts, build a stored sample edition and the fallback layout with today's tools and fonts.
+    Anything broken is reported to the owner while there is still time to fix it."""
+    d = os.path.join(HERE, "work", "canary")
+    shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
+    for f in ("build_brief_v2.py", "extras_v2.py", "brief_v2.css", "wordmark.png", "circles.png",
+              "NotoSansArabic-Regular.ttf", "NotoSansArabic-Bold.ttf"):
+        shutil.copy(os.path.join(HERE, "kit", f), d)
+    for f in ("content_v2.json", "hero_data.json", "market_data.json", "brief.txt"):
+        shutil.copy(os.path.join(HERE, "kit", "canary", f), d)
+    shutil.copy(os.path.join(HERE, "series.json"), d)
+    problems = []
+    b = subprocess.run([sys.executable, "build_brief_v2.py", "content_v2.json", "market_data.json", "hero_data.json", "c.pdf"],
+                       cwd=d, capture_output=True, text=True)
+    npg = re.search(r"Pages:\s+(\d+)", subprocess.run(["pdfinfo", os.path.join(d, "c.pdf")], capture_output=True, text=True).stdout or "")
+    if not npg or npg.group(1) != "3":
+        problems.append(f"designed layout: builder exit {b.returncode}, pages {npg.group(1) if npg else 'none'}\n{(b.stdout + b.stderr)[-1200:]}")
+    f = subprocess.run([sys.executable, "build_brief_v2.py", "--fallback", "brief.txt", "01-01-2026", "f.pdf"],
+                       cwd=d, capture_output=True, text=True)
+    if not os.path.exists(os.path.join(d, "f.pdf")):
+        problems.append(f"fallback layout: exit {f.returncode}\n{(f.stdout + f.stderr)[-1200:]}")
+    fonts = subprocess.run(["pdffonts", os.path.join(d, "c.pdf")], capture_output=True, text=True).stdout if npg else ""
+    if npg and "AR" not in fonts:
+        problems.append("the Arabic font is missing from the disclaimer page")
+    if problems:
+        print("canary: FAILED\n" + "\n\n".join(problems))
+        alert(f"Morning test build failed {STAMP}", "The test build before today's edition found a problem; the brief may not "
+              "build as designed at 09:47 until it is fixed:\n\n" + "\n\n".join(problems))
+        return 1
+    print("canary: designed layout 3 pages, fallback layout built, Arabic font embedded")
+    return 0
+
+
 if __name__ == "__main__":
+    if sys.argv[1:] == ["canary"]:
+        sys.exit(canary())
     sys.exit(detect() if sys.argv[1:] == ["detect"] else send())

@@ -53,3 +53,5 @@
 25-10-2026 | Bloomberg | READ | 0
 25-10-2026 | Investopedia | READ | 0
 25-10-2026 | Reuters | SKIMMED | 0
+26-10-2026 | EnterpriseAM Saudi | READ | 5
+26-10-2026 | Ground News | READ | 1

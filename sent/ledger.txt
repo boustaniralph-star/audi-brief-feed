@@ -16,3 +16,4 @@
 23-10-2026: hero=line; A=scorecard+movers; B=storyline+storyline; panels=Gulf stock markets on Thursday+Saudi bank loan growth; extras=numday,teaser,storyline; sectors=none
 24-10-2026: hero=guidance; A=month+sectors; B=rates+tiles; panels=Saudi stocks 66-month low+SNB leads Saudi bank profits; extras=numday,teaser; sectors=day
 25-10-2026: hero=line; A=ytd+multiples; B=rates_trend+tiles; panels=Saudi Kayan loss+Humain Neom campus; extras=numday,teaser,gulf,topmovers-sp; sectors=none
+26-10-2026: hero=line; A=index_board+weekmap; B=storyline+tiles; panels=Al Rajhi Q3 profit lead+Jarir retail profit; extras=numday,teaser; sectors=none

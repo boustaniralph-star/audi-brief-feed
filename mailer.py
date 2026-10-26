@@ -23,10 +23,9 @@ RECIP = [a.strip() for a in os.environ.get("RECIPIENTS_LIVE" if MODE == "live" e
 MARK = os.path.join(HERE, "sent", f"{STAMP}-{MODE}.json")
 DRY = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")   # build and check only: no email, no markers
 ALERT = os.path.join(HERE, "sent", f"{STAMP}-alert.json")
-HELD = os.path.join(HERE, "sent", f"{STAMP}-held.json")
-RELEASE = os.environ.get("RELEASE", "").lower() in ("1", "true", "yes")   # send a held brief as it is
-# pulse_check classes that mean a reader would see a wrong, repeated, unsourced or non-compliant line. When the
-# writer could not run its own checks (PRECHECK: not run), any of these holds the brief for the owner.
+# Ralph, 26.10.2026: "never hold a brief, resolve it". Every package is repaired where code can repair it (kit/repair.py),
+# built and sent; what no code can fix is reported to the owner afterwards, never a reason to stop.
+# pulse_check classes that mean a reader would see a wrong, repeated, unsourced or non-compliant line
 BLOCKING = ("FACTS", "REPETITION", "CONTRADICTION", "TEASER", "CAUSE", "CURRENCY", "VALUE", "COMPLIANCE")
 STALE = os.path.join(HERE, "sent", f"{STAMP}-stale.json")
 
@@ -225,11 +224,9 @@ def detect():
         out("found", "true"); return 0
     if os.path.exists(MARK):
         print("already sent today"); out("found", "false"); return 0
-    if os.path.exists(HELD) and not RELEASE:
-        print("held for the owner; run brief-send with release to send it"); out("found", "false"); return 0
     stale_feed_watchdog()
     data_check_alert()
-    if USER and PW and not RELEASE and already_emailed():
+    if USER and PW and already_emailed():
         print("today's brief is already in Sent; not sending again")
         os.makedirs(os.path.dirname(MARK), exist_ok=True)
         json.dump({"mode": MODE, "note": "found in Sent by a later run"}, open(MARK, "w")); out("commit", "true")
@@ -258,6 +255,24 @@ def send():
     txtp = os.path.join(WORK, base + ".txt"); pdfp = os.path.join(WORK, base + ".pdf")
     content, hero, txt = json.loads(sec["CONTENT"]), json.loads(sec["HERO"]), sec["TXT"]
     md = json.load(open(os.path.join(WORK, "market_data.json"), encoding="utf-8-sig"))
+    fixes = []
+    if md.get("generatedAt", "")[:10] != ISO:
+        # a stale feed is refreshed here rather than failing the build
+        r = subprocess.run([sys.executable, "fetch_market_data.py"], cwd=HERE, capture_output=True, text=True, env=dict(os.environ, FORCE="1"))
+        subprocess.run([sys.executable, "make_series.py"], cwd=HERE, capture_output=True, text=True, env=dict(os.environ, NO_BACKFILL="1"))
+        for f in ("market_data.json", "series.json"):
+            shutil.copy(os.path.join(HERE, f), WORK)
+        md = json.load(open(os.path.join(WORK, "market_data.json"), encoding="utf-8-sig"))
+        fixes.append(f"market data was stale; refreshed here (now {md.get('generatedAt', '?')}, fetch exit {r.returncode})")
+    try:
+        sys.path.insert(0, os.path.join(HERE, "kit"))
+        import repair
+        content, txt, rl = repair.all_repairs(content, txt, md)
+        fixes += rl
+    except Exception as e:
+        fixes.append(f"repairs skipped ({type(e).__name__}: {e})")
+    for f_ in fixes:
+        print("repair:", f_)
     # Bring the package up to the desktop standard (enrich.py), then build the richest variant that still passes
     # the builder's overlap check and fits 2 pages. The last variant is the package exactly as sent.
     variants = []
@@ -307,7 +322,18 @@ def send():
             sec["TXT"] = t
             break
     if not ok:
-        alert(f"Build failed for {STAMP}", f"Builder exit {b.returncode}. Nothing was sent.\n\n{log}"); print(log); return 1
+        # no layout variant built: the text brief still goes out, so no edition is ever lost
+        print(log)
+        if DRY:
+            print("[dry run] no PDF variant built; would send the text brief"); return 0
+        msg = EmailMessage(); msg["From"] = USER; msg["To"] = ", ".join(RECIP)
+        subject = f"Morning Briefing - {NOW.strftime('%A')}, {NOW.strftime('%d %B %Y')}"
+        msg["Subject"] = ("[CLOUD TEST] " if MODE == "test" else "") + subject
+        msg.set_content(txt)
+        smtp_send(msg)
+        json.dump({"mode": MODE, "sentAt": NOW.strftime("%H:%M"), "pdf": False, "recipients": len(RECIP)}, open(MARK, "w"))
+        alert(f"Brief sent as text only {STAMP}", f"No PDF layout built (builder exit {b.returncode}); the text brief was sent.\n\n{log}")
+        print("sent", MODE, "text only"); return 0
     # the writer's sandbox normally runs the full check before sending; when its shell was down it sends the package
     # marked "PRECHECK: not run" and this run does the full check (ledger, sources, facts and the page audit) instead
     unchecked = bool(re.search(r"^PRECHECK:\s*not run", body.split("=====TXT=====")[0], re.M | re.I))
@@ -324,34 +350,18 @@ def send():
     p = subprocess.run([sys.executable, "pulse_check.py", "content_v2.json", "market_data.json", "hero_data.json", base + ".pdf"]
                        + pargs, cwd=WORK, capture_output=True, text=True)
     plog = p.stdout.strip()
-    if p.returncode != 0:
-        alert(f"Pulse check FAILED for {STAMP}", "Nothing was sent.\n\n" + plog); print(plog); return 1
+    fails = [l.strip()[5:].strip() for l in plog.splitlines() if l.strip().startswith("FAIL")]
     blocking = [l.strip()[5:].strip() for l in plog.splitlines()
                 if l.strip().startswith("WARN") and l.strip()[5:].strip().startswith(BLOCKING)]
     hard = [l.strip()[5:].strip() for l in plog.splitlines() if l.strip().startswith("WARN")
             and l.strip()[5:].strip().startswith(BLOCKING + ("DESKTOP STANDARD", "SOURCES", "HOOKS", "THEME"))]
     if unchecked:
         print("precheck: not run by the writer; full check run here,", len(blocking), "blocking warning(s)")
-    elif hard and not DRY:
-        alert(f"Checks the writer missed {STAMP}: {len(hard)}",
-              "The brief was sent. GitHub's full check found these, which the writer's own check should have fixed:\n\n"
-              + "\n".join("- " + w for w in hard))
-    if unchecked and blocking and not RELEASE:
-        print(plog)
-        if DRY:
-            print("[dry run] would hold the brief for the owner"); return 0
-        m = EmailMessage(); m["From"] = USER; m["To"] = ", ".join(OWNER)
-        m["Subject"] = f"[BRIEF HELD] {STAMP}: {len(blocking)} check(s) to clear before it goes out"
-        m.set_content("The writer could not run its own checks today, so GitHub checked the brief and held it. "
-                      "Nothing was sent to the recipients. The PDF is attached.\n\n"
-                      + "\n".join("- " + w for w in blocking)
-                      + "\n\nTo send it as it is: GitHub > Actions > brief-send > Run workflow > tick 'release' > Run."
-                      + "\n\nFull check:\n" + plog)
-        m.add_attachment(open(pdfp, "rb").read(), maintype="application", subtype="pdf", filename=base + ".pdf")
-        smtp_send(m)
-        os.makedirs(os.path.dirname(HELD), exist_ok=True)
-        json.dump({"held": blocking}, open(HELD, "w")); out("commit", "true")
-        return 0
+    if (fixes or fails or hard) and not DRY:
+        alert(f"Brief report {STAMP}: {len(fixes)} repaired, {len(fails) + len(hard)} for the writer",
+              "The brief was sent.\n\n"
+              + ("Repaired automatically before sending:\n" + "\n".join("- " + f_ for f_ in fixes) + "\n\n" if fixes else "")
+              + ("Left for the writer (its next run reads lessons.txt):\n" + "\n".join("- " + w for w in fails + hard) if fails or hard else ""))
     pages = re.search(r"Pages:\s+(\d+)", subprocess.run(["pdfinfo", pdfp], capture_output=True, text=True).stdout).group(1)
     lay = hashlib.sha1(subprocess.run(["pdftotext", "-layout", pdfp, "-"], capture_output=True, text=True).stdout.encode()).hexdigest()[:12]
     words = len(sec["TXT"].split()); kb = os.path.getsize(pdfp) // 1024
@@ -386,7 +396,7 @@ def send():
     msg = EmailMessage(); msg["From"] = USER; msg["To"] = ", ".join(RECIP)
     if MODE == "test":
         msg["Subject"] = "[CLOUD TEST] " + subject
-        pre = "writer precheck: not run (shell down), checked here" + (" and released by the owner" if RELEASE else "") if unchecked else "writer precheck: run"
+        pre = ("writer precheck: not run (shell down), checked here" if unchecked else "writer precheck: run") + (f" | {len(fixes)} repaired here" if fixes else "")
         foot = f"\n\n--- cloud build check ---\npages {pages} | words {words} | pdf {kb} KB | layout {lay}\n{plog.splitlines()[-1] if plog else ''}\n{pre}\n{covline}\n{factline}\n"
         msg.set_content(sec["TXT"] + foot)
     else:
@@ -395,7 +405,7 @@ def send():
     smtp_send(msg)
     json.dump({"mode": MODE, "sentAt": NOW.strftime("%H:%M"), "pages": int(pages), "words": words, "kb": kb, "layout": lay,
                "pulse": plog.splitlines()[-1] if plog else "", "recipients": len(RECIP),
-               "precheck": "not run" if unchecked else "run", "released": RELEASE,
+               "precheck": "not run" if unchecked else "run", "repaired": fixes,
                "newsletters": {"read": cov[0], "arrived": cov[1], "not_read": cov[2]} if cov else None,
                "facts": {"summary": factline, "doubts": [f"{st}: {lead}" for lead, st, u, n in doubts]}}, open(MARK, "w"))
     # chart-rotation memory: one ledger line per sent edition, kept in the repo so the writer never loses days

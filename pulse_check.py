@@ -439,7 +439,37 @@ if sources:
             for l in nou[:4]:
                 warn("SOURCES (fix, do not justify): READ line has no 'used=N' (stories in this brief that came from it): " + " | ".join(x.strip() for x in l.split("|")[1:3]))
         if SL and not unread: OK.append(f"{len(SL)} newsletters accounted for")
+        # 26.10.2026: 13 threads arrived, two were read and listed, and searches.txt was never written
+        if today_d >= dt.date(2026, 10, 27):
+            nread = sum(1 for l in SL if l.split("|")[1].strip().upper() == "READ")
+            if nread < 3:
+                warn(f"SOURCES (fix, do not justify): only {nread} newsletter(s) read in full; always read the first 3 that arrived "
+                     "in the READING ORDER, and list every thread the query returned in sources.txt (READ or SKIMMED)")
+            import os as _o3
+            sp_ = _o3.path.join(_o3.path.dirname(_o3.path.abspath(sources)), "searches.txt")
+            nse = len([l for l in open(sp_, encoding="utf-8").read().splitlines() if l.strip()]) if _o3.path.exists(sp_) else 0
+            need = 20 if today_d.weekday() in (5, 6) else 16
+            if nse < need:
+                warn(f"SOURCES (fix, do not justify): searches.txt logs {nse} web searches, fewer than {need}; run and log them "
+                     "(section | query | stories found), including the MAJOR EVENTS sweep")
     except Exception as e: warn(f"sources check skipped: {e}")
+# section depth (DESKTOP STANDARD 2 and STEP 2B): thin sections are not a full edition
+if today_d >= dt.date(2026, 10, 27):
+    try:
+        secs = {s_[0].upper(): len(s_[1]) for pg in ("p1", "p2") for side in ("left", "right") for s_ in C.get(pg, {}).get(side, []) or []}
+        for name_, need_ in (("GEOPOLITICS & MACRO", 2), ("EUROPE", 2), ("EMERGING MARKETS", 3), ("GCC & MENA", 5)):
+            if secs.get(name_, 0) < need_:
+                warn(f"DESKTOP STANDARD (fix, do not justify): {name_} has {secs.get(name_, 0)} bullet(s), at least {need_} needed "
+                     "(Europe and Emerging Markets carry 2 news bullets beyond the closes); search that section again for news")
+    except Exception as e: warn(f"section check skipped: {e}")
+# calendar dates: a listed company's earnings date is on the earnings calendar, never "unconfirmed"
+if today_d >= dt.date(2026, 10, 27):
+    _cal = alltext + " " + (open(txt, encoding="utf-8").read() if txt else "")
+    _m = re.search(r"[^.;\n]{0,60}\b(unconfirmed|not (?:yet )?confirmed|dates? (?:to be|tbc)|expected this week|due this week)\b[^.;\n]{0,40}", _cal, re.I)
+    if _m:
+        warn("FACTS (fix, do not justify): " + f"'{_m.group(0).strip()[:90]}': confirm the date (US listings: Robinhood "
+             "get_earnings_calendar, which marks company-verified dates and before/after the US open; others: IBKR or the "
+             "company's investor-relations page) and print the day, or leave the event out")
 # FACTS: every bullet's key figure was checked outside the newsletters, on its latest version
 if facts:
     try:

@@ -351,6 +351,31 @@ def sec(title, items, extra=""):
 
 CSS = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "brief_v2.css"), encoding="utf-8").read()
 
+# Page 3: the Important Notice and Disclaimer approved by Audi Capital Compliance (Ralph, 26.10.2026: "the only thing
+# I want there"). Compliance's wording, verbatim, English and Arabic (from Daily_Brief_Disclaimer.docx); change it
+# only with a new approved text.
+DISCLAIMER_EN = ('Important Notice and Disclaimer', [
+    'This Brief is issued by Audi Capital, Riyadh, Kingdom of Saudi Arabia, a capital market institution licensed by the Capital Market Authority (License No. 06017-37), for information purposes only.',
+    'It does not constitute investment, legal, tax, or accounting advice, a personal recommendation, or an offer or solicitation to buy or sell any security, and does not take into account the objectives, financial situation, or needs of any recipient.',
+    'Information is obtained from sources believed to be reliable, but its accuracy and completeness are not guaranteed. Opinions are as at the date of publication and are subject to change without notice.',
+    'Prices, values, or income of investments may fall, and investors may get back less than they invested. Past performance is not necessarily a guide to future performance.',
+    'Audi Capital or its affiliates may hold positions in, or provide services to, issuers of securities mentioned in this Brief.',
+    'To the fullest extent permitted by applicable law, Audi Capital accepts no liability for any loss arising from the use of or reliance on this Brief.',
+    "This Brief may not be reproduced or redistributed without Audi Capital's prior written consent.",
+    '© 2026 Audi Capital. All rights reserved.',
+])
+DISCLAIMER_AR = ('إشعار هام وإخلاء مسؤولية', [
+    'صدرت هذه النشرة عن شركة عوده كابيتال ، الرياض – المملكة العربية السعودية ، وهي مؤسسة سوق مالية مرخص لها من هيئة السوق المالية (ترخيص رقم٣٧-٠٦٠١٧)، لأغراض المعلومات فقط.',
+    'لا تُعد هذه النشرة نصيحة استثمارية أو قانونية أو ضريبية أو محاسبية، ولا توصية شخصية، ولا عرضاً أو دعوة لشراء أو بيع أي ورقة مالية، ولا تراعي الأهداف أو الوضع المالي أو احتياجات أي متلقٍ.',
+    'المعلومات مستمدة من مصادر يُعتقد أنها موثوقة، دون ضمان لدقتها أو اكتمالها. والآراء الواردة بتاريخ النشر وعرضة للتغيير دون إشعار.',
+    'قد تنخفض أسعار الاستثمارات أو قيمتها أو دخلها، وقد يسترد المستثمر أقل مما استثمره. والأداء السابق ليس بالضرورة دليلاً على الأداء المستقبلي.',
+    'قد تحتفظ الشركة أو الشركات التابعة لها بمراكز في الجهات المصدرة للأوراق المالية المذكورة في هذه النشرة، أو تقدم لها خدمات.',
+    'إلى أقصى حد يسمح به النظام، لا تتحمل الشركة أي مسؤولية عن أي خسارة ناتجة عن استخدام هذه النشرة أو الاعتماد عليها.',
+    'لا يجوز نسخ هذه النشرة أو إعادة توزيعها دون موافقة كتابية مسبقة من الشركة.',
+    '© 2026 شركة عوده كابيتال . جميع الحقوق محفوظة.',
+])
+
+
 
 
 # ---------------- rotating chart types (v3) ----------------
@@ -665,7 +690,7 @@ def main(content_p, md_p, hero_p, out_pdf):
   {chartblock}
   <div class="catalyst"><b>Next catalyst</b>{nums(cot["catalyst"])}</div>{means}</div>
  <div class="cols"><div class="col">{"".join(sec(t, i) for t, i in p1["left"])}{X.render_extras(p1.get("extras_left"))}</div><div class="col">{"".join(sec(t, i) for t, i in p1["right"])}{X.render_extras(p1.get("extras_right"))}</div></div>
- <div class="foot"><div><b>Audi Capital</b> | Daily Brief | {D}</div><div class="pg">01 / 02</div></div></div>'''
+ <div class="foot"><div><b>Audi Capital</b> | Daily Brief | {D}</div><div class="pg">01 / 03</div></div></div>'''
     left2 = "".join(sec(t, i, fis if t.startswith("GCC") else "") for t, i in p2["left"]) + X.render_extras(p2.get("extras_left"))
     right2 = "".join(sec(t, i) for t, i in p2["right"]) + X.render_extras(p2.get("extras_right"))
     page2 = f'''<div class="page">
@@ -673,8 +698,9 @@ def main(content_p, md_p, hero_p, out_pdf):
  <div class="cols" style="margin-top:0"><div class="col">{card_html(0, cards[0])}</div><div class="col">{card_html(1, cards[1])}</div></div>
  <div class="cols"><div class="col">{left2}</div><div class="col">{right2}</div></div>
  <div class="watch"><div class="k">{html.escape(w.get("label", "Watch today"))}<span class="clock">{html.escape(w["clock"])}</span></div><p>{nums(w["text"])}</p></div>
- <div class="foot">{foot2}<div class="pg">02 / 02</div></div></div>'''
-    doc = f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}{X.EXTRA_CSS}</style></head><body>{page1}{page2}</body></html>'
+ <div class="foot">{foot2}<div class="pg">02 / 03</div></div></div>'''
+    page3 = page3_html(D, foot2)
+    doc = f'<!doctype html><html><head><meta charset="utf-8"><style>{CSS}{X.EXTRA_CSS}{P3_CSS}</style></head><body>{page1}{page2}{page3}</body></html>'
     open("brief_v2.html", "w", encoding="utf-8").write(doc)
     from weasyprint import HTML
     rendered = HTML(filename="brief_v2.html", base_url=os.getcwd()).render()
@@ -694,6 +720,30 @@ def main(content_p, md_p, hero_p, out_pdf):
         for w_ in X.WARN: print("  -", w_)
         sys.exit(4)
     print("overlap check: clean")
+
+
+HERE_DIR = os.path.dirname(os.path.abspath(__file__))
+P3_CSS = (f"@font-face{{font-family:AR;src:url('file://{HERE_DIR}/NotoSansArabic-Regular.ttf');font-weight:400}}"
+          f"@font-face{{font-family:AR;src:url('file://{HERE_DIR}/NotoSansArabic-Bold.ttf');font-weight:700}}"
+          ".p3{position:absolute;left:12mm;right:12mm;top:26mm;bottom:20mm;display:flex;flex-direction:column;justify-content:center}"
+          ".p3k{font-size:8pt;letter-spacing:.18em;text-transform:uppercase;color:var(--steel);font-weight:700;margin-bottom:5mm}"
+          ".p3g{display:grid;grid-template-columns:1fr 1fr;column-gap:10mm;border-top:2.2pt solid var(--navy);padding-top:9mm}"
+          ".p3c{display:flex;flex-direction:column}.p3c h3{font-size:14pt;font-weight:800;margin:0 0 6mm 0;color:var(--navy)}"
+          ".p3c p{font-size:9.8pt;line-height:1.62;margin:0 0 4.2mm 0;color:#2B3A55}"
+          ".p3c p.cr{margin-top:auto;margin-bottom:0;padding-top:3.5mm;border-top:0.8pt solid var(--line);color:var(--mute);font-size:8.4pt}"
+          ".p3c.ar{direction:rtl;text-align:right;font-family:AR,I;border-left:0.8pt solid var(--line);padding-left:10mm}"
+          ".p3c.ar h3{font-size:15pt;font-weight:700}.p3c.ar p{font-size:10.4pt;line-height:1.72}.p3c.ar p.cr{font-size:9pt}")
+
+
+def page3_html(D, foot2):
+    """The disclaimer page: Compliance's text only, English and Arabic side by side, in the brief's frame."""
+    def col(t, cls):
+        h, ps = t
+        body = "".join(f'<p{" class=cr" if x.startswith(chr(169)) else ""}>{html.escape(x)}</p>' for x in ps)
+        return f'<div class="p3c {cls}"><h3>{html.escape(h)}</h3>{body}</div>'
+    return (f'<div class="page">\n <div class="runhead"><img src="wordmark.png"><div class="r">Daily Brief | {D} | Important notice</div></div>\n'
+            f' <div class="p3"><div class="p3g">{col(DISCLAIMER_EN, "en")}{col(DISCLAIMER_AR, "ar")}</div></div>\n'
+            f' <div class="foot">{foot2}<div class="pg">03 / 03</div></div></div>')
 
 
 def measure(doc, pdf_name):

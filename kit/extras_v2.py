@@ -352,8 +352,17 @@ def render_extra(x):
         return f'<div class="xbox"><div class="xt">{e(x.get("title", "Where are they now?"))}</div>{out}' + \
                (f'<div class="xs">{e(x["note"])}</div>' if x.get("note") else "") + '</div>'
     if t == "weekmap":
-        # one key day at most, labeled so a reader knows why it stands out (Ralph, 26.10.2026); later "hi" flags are ignored
-        key = next((i for i, d in enumerate(x["days"]) if d.get("hi")), None)
+        # one key day at most, labeled so a reader knows why it stands out (Ralph, 26.10.2026). When several days are
+        # flagged the most market-moving one wins: a central-bank rate decision, then major data, then big earnings
+        flagged = [i for i, d in enumerate(x["days"]) if d.get("hi")]
+        def weight(i):
+            t = x["days"][i].get("text", "").lower()
+            for w, pat in ((4, r"\b(fed|fomc|sama|ecb|boe|boj|central bank)\b.*\bdecision|rate decision|\bdecision\b.*\b(fed|fomc|sama|ecb)\b"),
+                           (3, r"\b(cpi|inflation|payrolls|jobs report|gdp|pce)\b"), (2, r"\b(results|earnings)\b")):
+                if re.search(pat, t):
+                    return w
+            return 1
+        key = max(flagged, key=lambda i: (weight(i), -i)) if flagged else None
         rows = "".join(f'<tr class="{"hl" if i == key else ""}"><td class="d">{e(d["day"])}'
                        + ('<span class="kd">Key day</span>' if i == key else "") + f'</td><td>{e(d["text"])}</td></tr>'
                        for i, d in enumerate(x["days"]))

@@ -105,6 +105,8 @@ def sections(body):
     s["SOURCES"] = m.group(1).strip() if m else ""
     m = re.search(r"=====\s*FACTS\s*=====\r?\n(.*?)\r?\n=====", body, re.S)
     s["FACTS"] = m.group(1).strip() if m else ""
+    m = re.search(r"=====\s*SEARCHES\s*=====\r?\n(.*?)\r?\n=====", body, re.S)
+    s["SEARCHES"] = m.group(1).strip() if m else ""
     json.loads(s["CONTENT"]); json.loads(s["HERO"])
     return s
 
@@ -313,11 +315,12 @@ def send():
     lp = os.path.join(HERE, "sent", "ledger.txt")
     if os.path.exists(lp):
         shutil.copy(lp, os.path.join(WORK, "ledger.txt")); pargs += ["--ledger", "ledger.txt"]
+    # the full check runs here on every package (26.10.2026: a package reported "PASS, no warnings" while every fact
+    # cited a newsletter tracking link); searches.txt sits next to sources.txt, where pulse_check looks for it
+    open(os.path.join(WORK, "searches.txt"), "w", encoding="utf-8").write(sec.get("SEARCHES", "") + "\n")
     for name, fn in (("SOURCES", "sources.txt"), ("FACTS", "facts.txt")):
-        if unchecked and sec.get(name):
-            open(os.path.join(WORK, fn), "w", encoding="utf-8").write(sec[name] + "\n"); pargs += ["--" + name.lower(), fn]
-    if unchecked:
-        shutil.copy(os.path.join(HERE, "kit", "factcheck.py"), WORK)
+        open(os.path.join(WORK, fn), "w", encoding="utf-8").write(sec.get(name, "") + "\n"); pargs += ["--" + name.lower(), fn]
+    shutil.copy(os.path.join(HERE, "kit", "factcheck.py"), WORK)
     p = subprocess.run([sys.executable, "pulse_check.py", "content_v2.json", "market_data.json", "hero_data.json", base + ".pdf"]
                        + pargs, cwd=WORK, capture_output=True, text=True)
     plog = p.stdout.strip()
@@ -325,8 +328,14 @@ def send():
         alert(f"Pulse check FAILED for {STAMP}", "Nothing was sent.\n\n" + plog); print(plog); return 1
     blocking = [l.strip()[5:].strip() for l in plog.splitlines()
                 if l.strip().startswith("WARN") and l.strip()[5:].strip().startswith(BLOCKING)]
+    hard = [l.strip()[5:].strip() for l in plog.splitlines() if l.strip().startswith("WARN")
+            and l.strip()[5:].strip().startswith(BLOCKING + ("DESKTOP STANDARD", "SOURCES", "HOOKS", "THEME"))]
     if unchecked:
         print("precheck: not run by the writer; full check run here,", len(blocking), "blocking warning(s)")
+    elif hard and not DRY:
+        alert(f"Checks the writer missed {STAMP}: {len(hard)}",
+              "The brief was sent. GitHub's full check found these, which the writer's own check should have fixed:\n\n"
+              + "\n".join("- " + w for w in hard))
     if unchecked and blocking and not RELEASE:
         print(plog)
         if DRY:

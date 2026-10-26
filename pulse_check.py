@@ -463,6 +463,11 @@ if today_d >= dt.date(2026, 10, 27):
                 warn(f"DESKTOP STANDARD (fix, do not justify): {name_} has {secs.get(name_, 0)} bullet(s), at least {need_} needed "
                      "(Europe and Emerging Markets carry 2 news bullets beyond the closes); search that section again for news")
     except Exception as e: warn(f"section check skipped: {e}")
+# week-ahead map: one key day at most (Ralph, 26.10.2026: two colored days with no label puzzled readers)
+for _wm in [ch for c in C.get("p2", {}).get("cards", []) for ch in c.get("charts", []) if ch.get("type") == "weekmap"] + \
+           [x for pg in ("p1", "p2") for sd in ("extras_left", "extras_right") for x in C.get(pg, {}).get(sd, []) or [] if x.get("type") == "weekmap"]:
+    if sum(1 for d in _wm.get("days", []) if d.get("hi")) > 1:
+        warn("STORY CHARTS (fix, do not justify): the week-ahead map highlights more than one day; mark only the week's single biggest event with \"hi\": true (it is labeled Key day)")
 # calendar dates: a listed company's earnings date is on the earnings calendar, never "unconfirmed"
 if today_d >= dt.date(2026, 10, 27):
     _cal = alltext + " " + (open(txt, encoding="utf-8").read() if txt else "")

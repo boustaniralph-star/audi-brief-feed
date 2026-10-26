@@ -55,16 +55,7 @@ jobs:
       - name: Install build tools
         if: steps.detect.outputs.found == 'true'
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq poppler-utils libpango-1.0-0 libpangoft2-1.0-0 fontconfig fonts-inter fonts-ibm-plex
-          pip install -q weasyprint==70.0 matplotlib==3.11.2 numpy==2.5.3 pillow pydyf==0.12.1
-          mkdir -p ~/.fonts ~/.config/fontconfig
-          for w in Regular Medium SemiBold Bold ExtraBold; do cp /usr/share/fonts/opentype/inter/Inter-$w.otf ~/.fonts/; done
-          for w in Regular Medium SemiBold Bold; do cp /usr/share/fonts/truetype/ibm-plex/IBMPlexMono-$w.ttf ~/.fonts/; done
-          cp kit/fonts.conf ~/.config/fontconfig/fonts.conf
-          base64 -d kit/wordmark.b64 > kit/wordmark.png
-          base64 -d kit/circles.b64 > kit/circles.png
-          fc-cache -f
+          bash kit/install_tools.sh
       - name: Build, check and send
         if: steps.detect.outputs.found == 'true'
         run: python3 mailer.py send

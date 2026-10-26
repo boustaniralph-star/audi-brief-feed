@@ -1,0 +1,30 @@
+name: canary
+# Morning test build (Ralph, 26.10.2026: "everything should be clockwork"). Right after the market feed refreshes
+# (about 08:25 Riyadh) and before the writer starts at 09:07, a stored sample edition and the fallback layout are
+# built with the same tools and fonts as the real send; anything broken is emailed to the owner while there is
+# time to fix it. GitHub's own cron is unreliable for this repo, so it follows the market-data workflow instead.
+on:
+  workflow_run:
+    workflows: [market-data]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GMAIL_USER: ${{ secrets.GMAIL_USER }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+      RECIPIENTS_TEST: ${{ secrets.RECIPIENTS_TEST }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: bash kit/install_tools.sh
+      - name: Test build
+        run: python3 mailer.py canary

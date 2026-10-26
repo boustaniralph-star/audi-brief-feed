@@ -782,5 +782,44 @@ def measure(doc, pdf_name):
     return out
 
 
+FOOT_ADDR = ('<div class="addr"><div><b>Centria Building - 3rd Floor</b> | Tahlia Street - Olaya, Riyadh 12241-6055, '
+             'Kingdom of Saudi Arabia</div><div class="url"><a href="https://audicapital.com" '
+             'style="color:#fff;text-decoration:none">audicapital.com</a></div></div>')
+
+
+def fallback_pdf(txt_p, date, out_pdf):
+    """The last line of defence (Ralph, 26.10.2026: "everything should be clockwork"): when no designed layout builds,
+    the text brief is set in the house style, with no charts and no market data, followed by the disclaimer page.
+    It depends only on the text and the fonts, so it always builds."""
+    from weasyprint import HTML
+    lines = [l.rstrip() for l in open(txt_p, encoding="utf-8").read().splitlines()]
+    body, lst = [], False
+    for l in lines:
+        if not l.strip():
+            continue
+        if l.startswith("- "):
+            if not lst: body.append("<ul class='fb'>"); lst = True
+            body.append(f"<li>{nums(l[2:])}</li>"); continue
+        if lst: body.append("</ul>"); lst = False
+        head = re.match(r"^([A-Z][A-Z0-9 &,/-]{3,})(?: - (.*))?$", l) or re.match(r"^([A-Z][A-Z0-9 ,&/-]{3,}):\s*(.*)$", l)
+        if head and head.group(1).strip() == head.group(1).strip().upper():
+            body.append(f"<h2>{html.escape(head.group(1).strip())}</h2>" + (f"<p><b>{nums(head.group(2))}</b></p>" if head.group(2) else ""))
+        else:
+            body.append(f"<p>{nums(l)}</p>")
+    if lst: body.append("</ul>")
+    css = (CSS + P3_CSS + "@page fb{size:A4;margin:16mm 14mm 18mm 14mm}.fbw{page:fb;column-count:2;column-gap:8mm}"
+           ".fbw h2{break-after:avoid;margin-top:3mm}.fbw p,.fbw li{margin:0 0 1.6mm 0}ul.fb{padding-left:4mm;margin:0 0 2mm 0}"
+           ".fbm{page:fb;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.2pt solid var(--navy);"
+           "padding-bottom:3mm;margin-bottom:5mm}.fbm img{height:9mm}.p3pg{page-break-before:always}")
+    doc = (f'<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body>'
+           f'<div class="fbm"><img src="wordmark.png"><div class="kicker">Daily Brief | {html.escape(date)}</div></div>'
+           f'<div class="fbw">{"".join(body)}</div><div class="p3pg">{page3_html(date, FOOT_ADDR)}</div></body></html>')
+    HTML(string=doc, base_url=os.getcwd()).write_pdf(out_pdf)
+    print("wrote", out_pdf, "(fallback layout)")
+
+
 if __name__ == "__main__":
-    main(*sys.argv[1:5])
+    if sys.argv[1:2] == ["--fallback"]:
+        fallback_pdf(*sys.argv[2:5])
+    else:
+        main(*sys.argv[1:5])

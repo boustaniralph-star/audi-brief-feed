@@ -247,7 +247,8 @@ def detect():
 def send():
     body = open(os.path.join(WORK, "package.txt"), encoding="utf-8").read()
     sec = sections(body)
-    for f in ("build_brief_v2.py", "extras_v2.py", "pulse_check.py", "brief_v2.css", "wordmark.png", "circles.png"):
+    for f in ("build_brief_v2.py", "extras_v2.py", "pulse_check.py", "brief_v2.css", "wordmark.png", "circles.png",
+              "NotoSansArabic-Regular.ttf", "NotoSansArabic-Bold.ttf"):
         shutil.copy(os.path.join(HERE, "kit", f), WORK)
     for f in ("market_data.json", "series.json"):
         shutil.copy(os.path.join(HERE, f), WORK)
@@ -274,7 +275,7 @@ def send():
     for f_ in fixes:
         print("repair:", f_)
     # Bring the package up to the desktop standard (enrich.py), then build the richest variant that still passes
-    # the builder's overlap check and fits 2 pages. The last variant is the package exactly as sent.
+    # the builder's overlap check and fits 2 pages (plus the fixed disclaimer page 3). The last variant is the package exactly as sent.
     variants = []
     try:
         sys.path.insert(0, os.path.join(HERE, "kit"))
@@ -316,7 +317,7 @@ def send():
                            cwd=WORK, capture_output=True, text=True)
         log = (b.stdout + b.stderr)[-1500:]
         npg = re.search(r"Pages:\s+(\d+)", subprocess.run(["pdfinfo", pdfp], capture_output=True, text=True).stdout or "") if os.path.exists(pdfp) else None
-        ok = b.returncode == 0 and npg and npg.group(1) == "2"
+        ok = b.returncode == 0 and npg and npg.group(1) == "3"   # the 2-page brief and the disclaimer page
         print(f"build [{label}]:", "ok" if ok else f"rejected (exit {b.returncode}, pages {npg.group(1) if npg else '?'})")
         if ok:
             sec["TXT"] = t

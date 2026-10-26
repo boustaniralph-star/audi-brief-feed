@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Audi Capital Daily Brief - pulse check (added 11 Oct 2026, approved by Ralph).
 Sanity-checks a brief before it is committed: fresh data, figures consistent with market_data.json,
-extras make sense, rotation rules respected, no banned characters, 2 pages.
+extras make sense, rotation rules respected, no banned characters, 2 brief pages plus the disclaimer page.
 Usage: python3 pulse_check.py content_v2.json market_data.json hero_data.json [brief.pdf] [--ledger FILE] [--txt FILE] [--today YYYY-MM-DD] [--sources FILE] [--facts FILE]
 Exit 0 = pass (warnings may print), exit 5 = at least one FAIL. Never edits anything."""
 import json, re, subprocess, sys, datetime as dt
@@ -239,8 +239,9 @@ if ledger:
 if pdf:
     try:
         n = int(re.search(r"Pages:\s+(\d+)", subprocess.run(["pdfinfo", pdf], capture_output=True, text=True).stdout).group(1))
-        (OK if n == 2 else FAIL).append(f"PDF has {n} page(s)" + ("" if n == 2 else " (must be 2)"))
-        txtp = subprocess.run(["pdftotext", pdf, "-"], capture_output=True, text=True).stdout
+        (OK if n == 3 else FAIL).append(f"PDF has {n} page(s)" + ("" if n == 3 else " (must be 3: the 2-page brief and the disclaimer page)"))
+        # pages 1-2 only: page 3 is Compliance's disclaimer, verbatim, and its Arabic text carries an en dash
+        txtp = subprocess.run(["pdftotext", "-l", "2", pdf, "-"], capture_output=True, text=True).stdout
         if re.search("[–—]", txtp): fail("PDF text contains an em or en dash")
     except Exception as e: warn(f"pdf check skipped: {e}")
 

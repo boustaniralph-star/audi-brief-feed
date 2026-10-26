@@ -105,12 +105,14 @@ def check_pdf_overlap(pdf, band_words=None):
         WARN.append(f"pdf check skipped: {e}")
         return
     n = len(x.split("<page ")) - 1
-    if n != 2:
-        WARN.append(f"PDF has {n} pages, must be exactly 2 (overflow: trim wording or chart heights)")
+    if n != 3:
+        WARN.append(f"PDF has {n} pages, must be exactly 3: the 2-page brief and the disclaimer page (overflow: trim wording or chart heights)")
     pages = x.split("<page ")[1:]
     for pi, pg in enumerate(pages, 1):
         words = [(float(a), float(b), float(c), float(d), html.unescape(w)) for a, b, c, d, w in
                  re.findall(r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">(.*?)</word>', pg)]
+        if pi == 3:
+            continue          # the disclaimer page: fixed approved text, and right-to-left Arabic misreads as overlaps
         if band_words and pi == 2:
             keys = {w[4].lower().strip(".,;:") for w in words if w[4].lower().strip(".,;:") in band_words}
             tops = [w[1] for w in words if w[4].upper() == "WATCH"]

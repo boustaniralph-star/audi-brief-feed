@@ -319,6 +319,7 @@ table.wk tr:last-child td{border-bottom:none}
 table.wk td.d{font-weight:700;color:#1B2A4A;white-space:nowrap;width:15%}
 table.wk tr.hl td.d{color:#4A6FA5}
 table.wk tr.hl td{background:#E8EEF8}
+table.wk span.kd{display:block;margin-top:.5mm;font-size:5.6pt;letter-spacing:.12em;text-transform:uppercase;color:#4A6FA5;font-weight:700}
 """
 
 
@@ -351,7 +352,11 @@ def render_extra(x):
         return f'<div class="xbox"><div class="xt">{e(x.get("title", "Where are they now?"))}</div>{out}' + \
                (f'<div class="xs">{e(x["note"])}</div>' if x.get("note") else "") + '</div>'
     if t == "weekmap":
-        rows = "".join(f'<tr class="{"hl" if d.get("hi") else ""}"><td class="d">{e(d["day"])}</td><td>{e(d["text"])}</td></tr>' for d in x["days"])
+        # one key day at most, labeled so a reader knows why it stands out (Ralph, 26.10.2026); later "hi" flags are ignored
+        key = next((i for i, d in enumerate(x["days"]) if d.get("hi")), None)
+        rows = "".join(f'<tr class="{"hl" if i == key else ""}"><td class="d">{e(d["day"])}'
+                       + ('<span class="kd">Key day</span>' if i == key else "") + f'</td><td>{e(d["text"])}</td></tr>'
+                       for i, d in enumerate(x["days"]))
         return f'<div class="xbox"><div class="xt">{e(x.get("title", "Week ahead"))}</div><table class="wk">{rows}</table>' + \
                (f'<div class="xs">{e(x["note"])}</div>' if x.get("note") else "") + '</div>'
     raise SystemExit(f"unknown extra type {t}")

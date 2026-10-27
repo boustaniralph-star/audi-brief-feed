@@ -668,9 +668,8 @@ def main(content_p, md_p, hero_p, out_pdf):
         fis += f'<div class="fbox">{inner}</div>'
     fis = f'<div class="fis">{fis}</div>' if fis else ""
     w = C["watch"]
-    foot2 = ('<div class="addr"><div><b>Centria Building - 3rd Floor</b> | Tahlia Street - Olaya, Riyadh 12241-6055, '
-             'Kingdom of Saudi Arabia</div><div class="url"><a href="https://audicapital.com" '
-             'style="color:#fff;text-decoration:none">audicapital.com</a></div></div>')
+    # Compliance, 27.10.2026: the CMA licence next to Audi Capital's name at the bottom of every page
+    foot2 = FOOT_ADDR
     # hooks (optional fields): a three-line "today in 3" strip under the masthead, and a Gulf "what it means" line
     top3 = ""
     if C.get("top3"):
@@ -690,7 +689,7 @@ def main(content_p, md_p, hero_p, out_pdf):
   {chartblock}
   <div class="catalyst"><b>Next catalyst</b>{nums(cot["catalyst"])}</div>{means}</div>
  <div class="cols"><div class="col">{"".join(sec(t, i) for t, i in p1["left"])}{X.render_extras(p1.get("extras_left"))}</div><div class="col">{"".join(sec(t, i) for t, i in p1["right"])}{X.render_extras(p1.get("extras_right"))}</div></div>
- <div class="foot"><div><b>Audi Capital</b> | Daily Brief | {D}</div><div class="pg">01 / 03</div></div></div>'''
+ <div class="foot"><div><b>Audi Capital</b> | Licensed by the CMA (License No. 06017-37) | Daily Brief | {D}</div><div class="pg">01 / 03</div></div></div>'''
     left2 = "".join(sec(t, i, fis if t.startswith("GCC") else "") for t, i in p2["left"]) + X.render_extras(p2.get("extras_left"))
     right2 = "".join(sec(t, i) for t, i in p2["right"]) + X.render_extras(p2.get("extras_right"))
     page2 = f'''<div class="page">
@@ -733,6 +732,11 @@ P3_CSS = (f"@font-face{{font-family:AR;src:url('file://{HERE_DIR}/NotoSansArabic
           ".p3c p.cr{margin-top:auto;margin-bottom:0;padding-top:3.5mm;border-top:0.8pt solid var(--line);color:var(--mute);font-size:8.4pt}"
           ".p3c.ar{direction:rtl;text-align:right;font-family:AR,I;border-left:0.8pt solid var(--line);padding-left:10mm}"
           ".p3c.ar h3{font-size:15pt;font-weight:700}.p3c.ar p{font-size:10.4pt;line-height:1.72}.p3c.ar p.cr{font-size:9pt}")
+
+
+FOOT_ADDR = ('<div class="addr"><div><b>Audi Capital</b> | Licensed by the CMA (License No. 06017-37)</div><div>Centria Building - 3rd Floor | '
+             'Tahlia Street - Olaya, Riyadh 12241-6055, Kingdom of Saudi Arabia | <a href="https://audicapital.com" '
+             'style="color:#fff;text-decoration:none;font-weight:700">audicapital.com</a></div></div>')
 
 
 def page3_html(D, foot2):
@@ -782,9 +786,7 @@ def measure(doc, pdf_name):
     return out
 
 
-FOOT_ADDR = ('<div class="addr"><div><b>Centria Building - 3rd Floor</b> | Tahlia Street - Olaya, Riyadh 12241-6055, '
-             'Kingdom of Saudi Arabia</div><div class="url"><a href="https://audicapital.com" '
-             'style="color:#fff;text-decoration:none">audicapital.com</a></div></div>')
+
 
 
 def fallback_pdf(txt_p, date, out_pdf):
@@ -807,7 +809,11 @@ def fallback_pdf(txt_p, date, out_pdf):
         else:
             body.append(f"<p>{nums(l)}</p>")
     if lst: body.append("</ul>")
-    css = (CSS + P3_CSS + "@page fb{size:A4;margin:16mm 14mm 18mm 14mm}.fbw{page:fb;column-count:2;column-gap:8mm}"
+    foot = f"Audi Capital | Licensed by the CMA (License No. 06017-37) | Daily Brief | {date}"
+    css = (CSS + P3_CSS + "@page fb{size:A4;margin:16mm 14mm 18mm 14mm;"
+           f"@bottom-left{{content:'{foot}';font-family:I;font-size:7pt;color:#5E6C82}}"
+           "@bottom-right{content:counter(page) ' / ' counter(pages);font-family:I;font-size:7pt;color:#5E6C82}}"
+           ".fbw{page:fb;column-count:2;column-gap:8mm}"
            ".fbw h2{break-after:avoid;margin-top:3mm}.fbw p,.fbw li{margin:0 0 1.6mm 0}ul.fb{padding-left:4mm;margin:0 0 2mm 0}"
            ".fbm{page:fb;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.2pt solid var(--navy);"
            "padding-bottom:3mm;margin-bottom:5mm}.fbm img{height:9mm}.p3pg{page-break-before:always}")

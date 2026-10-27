@@ -374,6 +374,20 @@ def send():
     # the full check runs here on every package (26.10.2026: a package reported "PASS, no warnings" while every fact
     # cited a newsletter tracking link); searches.txt sits next to sources.txt, where pulse_check looks for it
     open(os.path.join(WORK, "searches.txt"), "w", encoding="utf-8").write(sec.get("SEARCHES", "") + "\n")
+    # newsletter redirect links are replaced by the article address they point to (the audit opens that page);
+    # the writer's own check still flags them, so the writer keeps citing pages it opened
+    try:
+        import factcheck as _fc0
+        nfix = 0
+        def _un(m):
+            return _fc0.unwrap(m.group(0))
+        new_f = re.sub(r"https?://(?:www\.)?google\.com/url\?[^\s|]+", _un, sec.get("FACTS", ""))
+        nfix = len(re.findall(r"google\.com/url", sec.get("FACTS", "")))
+        if nfix:
+            sec["FACTS"] = new_f
+            fixes.append(f"{nfix} newsletter redirect link(s) in facts.txt replaced by the article addresses")
+    except Exception as e:
+        print("redirect repair skipped:", type(e).__name__)
     for name, fn in (("SOURCES", "sources.txt"), ("FACTS", "facts.txt")):
         open(os.path.join(WORK, fn), "w", encoding="utf-8").write(sec.get(name, "") + "\n"); pargs += ["--" + name.lower(), fn]
     shutil.copy(os.path.join(HERE, "kit", "factcheck.py"), WORK)

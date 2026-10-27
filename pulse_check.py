@@ -186,6 +186,13 @@ try:
         # the month, YTD, 12 months or since listing, each with its source
         for m in list(re.finditer(r"[+-]?\d+(?:\.\d+)?%\s*(?:\w+\s){0,2}since\s+(?:the\s+)?(\d{1,2}\.\d{1,2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{1,2})(?!\.\d{4})", _txt, re.I))[:3]:
             warn(CP + f"performance from a chosen start date: '{m.group(0)}'; use a standard window (day, week, month, YTD, 12 months, since listing) and name its source")
+        # 27.10.2026: "BMI sees Brent above USD 110" relayed a third party's price forecast for a traded instrument;
+        # CMA rules bar price forecasts, so a forecast of where a stock, index or commodity will trade is left out
+        # (economic forecasts such as IMF growth stay)
+        _inst = r"(?:Brent|WTI|oil|crude|gold|silver|copper|the dollar|the riyal|bitcoin|TASI|S&P 500|Nasdaq|Dow|index|stocks?|shares?|the stock)"
+        for m in list(re.finditer(r"\b(?:sees?|expects?|forecasts?|predicts?|projects?|targets?|calls? for|bets? on)\b[^.;]{0,30}?\b" + _inst +
+                                  r"\b[^.;]{0,25}?\b(?:above|below|at|to (?:reach|hit|average|trade|rise|fall)|average|near|toward)\b[^.;]{0,15}?(?:USD|SAR|\$)?\s?\d", _txt, re.I))[:2]:
+            warn(CP + f"a price forecast for a traded instrument: '{m.group(0)[:90]}'; CMA rules bar price forecasts: report what happened, not where a price is expected to go")
         for s_ in C.get("cotd", {}).get("stats", []):
             if re.search(r"\bsince\s+\d{1,2}\.\d{1,2}\b", s_.get("l", ""), re.I):
                 warn(CP + f"Company of the Day stat '{s_.get('v')} {s_.get('l')}' measures from a chosen date; use a standard window")

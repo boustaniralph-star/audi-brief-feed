@@ -4,7 +4,7 @@ Sanity-checks a brief before it is committed: fresh data, figures consistent wit
 extras make sense, rotation rules respected, no banned characters, 2 brief pages plus the disclaimer page.
 Usage: python3 pulse_check.py content_v2.json market_data.json hero_data.json [brief.pdf] [--ledger FILE] [--txt FILE] [--today YYYY-MM-DD] [--sources FILE] [--facts FILE]
 Exit 0 = pass (warnings may print), exit 5 = at least one FAIL. Never edits anything."""
-import json, re, subprocess, sys, datetime as dt
+import json, os, re, subprocess, sys, datetime as dt
 
 args = [a for a in sys.argv[1:]]
 def opt(name, default=None):
@@ -17,6 +17,7 @@ pdf = args[3] if len(args) > 3 else None
 rd = lambda p: json.load(open(p, encoding="utf-8-sig"))
 C, M, H = rd(content), rd(mdata), rd(hero)
 FAIL, WARN, OK = [], [], []
+UNVERIFIED = []   # facts resting on a newsletter or on no page: the SEND GATE line at the end tells the writer when to cut them
 def fail(m): FAIL.append(m)
 def warn(m): WARN.append(m)
 
@@ -503,12 +504,14 @@ if facts:
             elif "google.com/url" in src or "click." in src or "links." in src:
                 warn("FACTS (fix, do not justify): '" + f[0] + "' cites a newsletter tracking link; open the source page itself and cite its own address")
             elif any(n in src for n in NL):
+                UNVERIFIED.append(f[0])
                 warn("FACTS (fix, do not justify): '" + f[0] + "' is verified partly by a newsletter (" + f[2][:50] + "); confirm every figure and date in it on a primary or wire source, or cut what you cannot")
         if today_d >= dt.date(2026, 10, 23):
             FX5 = "FACTS (fix, do not justify): "
             for f in FL:
                 s5 = f[2].lower()
                 if "http" not in s5 and "market_data.json" not in s5 and "official close" not in s5:
+                    UNVERIFIED.append(f[0])
                     warn(FX5 + f"'{f[0]}' names no page ({f[2][:40]}); cite the address of the page that confirms it (only market prices may cite market_data.json or 'official close')")
                 for u_ in re.findall(r"https?://[^\s;,|]+", f[2]):
                     u_ = re.sub(r"^https?://(?:www\.)?google\.com/url\?q=", "", u_).split("&source=")[0]
@@ -517,6 +520,15 @@ if facts:
                     if len(segs) < 3 and not re.search(r"\d{4,}|[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+", path_):
                         warn(FX5 + f"'{f[0]}' cites {u_[:60]}, a homepage or section page, not the article or filing that states the figure; cite that page")
                         break
+                # 28.10.2026: a 20.10 article was cited for a committee vote reported as Tuesday's news
+                if not re.search(r"background|\(context\)", f[0] + " " + f[1], re.I):
+                    for y_, mo_, d_ in re.findall(r"(?<!\d)(20[2-3]\d)[/-](\d{2})[/-](\d{2})(?!\d)", f[2]):
+                        try: age_ = (today_d - dt.date(int(y_), int(mo_), int(d_))).days
+                        except ValueError: continue
+                        if age_ > 4:
+                            warn(FX5 + f"'{f[0]}' cites a page dated {d_}.{mo_}.{y_} ({age_} days old) for this edition's news; cite the page that reports "
+                                 "the new event, or cut it (mark a line '(background)' only when the figure is background, not the news)")
+                            break
                 if re.search(r"single[- ]source|one source|partial", s5):
                     warn(FX5 + f"'{f[0]}' rests on a single or partial source; confirm it on a second independent source or drop it")
             joined = " ".join(f[0].lower() + " " + f[1].lower() for f in FL)
@@ -836,9 +848,45 @@ if pdf:
         if not short: OK.append("page 1 columns filled")
     except Exception as e: warn(f"page fill check skipped: {e}")
 
+# MAJOR MOVES (28.10.2026: the Ibovespa fell 13.88% on 26.10, the day after Lula's win, and the 27.10 edition did not say so):
+# an index move of 3% or more, or a commodity move of 4% or more, in the latest session is news and goes in the brief
+try:
+    if today_d >= dt.date(2026, 10, 29):
+        NAMES = {"S&P 500": r"S&P", "Nasdaq Composite": r"Nasdaq", "Dow Jones": r"\bDow\b", "STOXX 600": r"STOXX|Stoxx",
+                 "DAX": r"\bDAX\b", "CAC 40": r"\bCAC\b", "FTSE 100": r"\bFTSE\b", "Nikkei 225": r"Nikkei", "Hang Seng": r"Hang Seng",
+                 "Sensex": r"Sensex|Nifty", "CSI 300": r"CSI 300|Shanghai|China'?s? stocks", "Tadawul TASI": r"\bTASI\b|Saudi (stocks|shares|market)",
+                 "Ibovespa": r"Ibovespa|Brazil", "Kospi": r"Kospi|KOSPI|Korea", "Brent": r"Brent|\boil\b", "WTI": r"\bWTI\b|\boil\b",
+                 "Gold": r"\bgold\b|\bGold\b"}
+        body_ = alltext + " " + (open(txt, encoding="utf-8").read() if txt else "")
+        for n_, it_ in items.items():
+            if n_ not in NAMES or it_.get("unit") != "pct" or it_.get("chgDay") is None: continue
+            lim_ = 4 if n_ in ("Brent", "WTI", "Gold") else 3
+            age_ = (today_d - dt.date.fromisoformat(it_["asOf"])).days
+            if abs(it_["chgDay"]) >= lim_ and age_ <= 1 and not re.search(NAMES[n_], body_):
+                warn(f"DESKTOP STANDARD (fix, do not justify): {n_} moved {it_['chgDay']:+.2f}% on {it_['asOf']} and the brief does not mention it; "
+                     "a move this size is news: report it with its cause from a named source")
+except Exception as e: warn(f"major moves check skipped: {e}")
+
 print("PULSE CHECK")
 for m in OK: print("  ok   ", m)
 for m in WARN: print("  WARN ", m)
 for m in FAIL: print("  FAIL ", m)
 print("RESULT:", "FAIL" if FAIL else ("PASS with warnings" if WARN else "PASS"))
+# SEND GATE (Ralph, 28.10.2026: three newsletter-only facts went to Compliance although the rule said cut them at 09:35).
+# The writer sends only on OPEN or SEND NOW. Not printed on GitHub, whose mailer reads the RESULT line as the last line.
+if facts and not os.environ.get("GITHUB_ACTIONS"):
+    _now = dt.datetime.now(dt.timezone(dt.timedelta(hours=3)))
+    _hm = _now.strftime("%H:%M")
+    _u = list(dict.fromkeys(UNVERIFIED))
+    if today and today != _now.date().isoformat():
+        pass
+    elif not _u:
+        print(f"SEND GATE: OPEN ({_hm}): every fact cites its own page")
+    elif _hm < "09:35":
+        print(f"SEND GATE: CLOSED ({_hm}): open the original article for " + "; ".join(f"'{x}'" for x in _u) + ". At 09:35 cut what is left")
+    elif _hm < "09:40":
+        print(f"SEND GATE: CUT NOW ({_hm}): remove " + "; ".join(f"'{x}'" for x in _u) + " (a bullet: cut it; a panel, Today in 3 or the Number of the day: "
+              "replace it with a verified story), rebuild, rerun this check, then send")
+    else:
+        print(f"SEND GATE: SEND NOW ({_hm}): send the package as it is; GitHub reports what is left")
 sys.exit(5 if FAIL else 0)

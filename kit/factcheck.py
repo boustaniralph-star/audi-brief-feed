@@ -73,9 +73,31 @@ def keywords(text):
     return [w for w in re.findall(r"[A-Za-z][A-Za-z'\-]{3,}", text) if w.lower() not in COMMON][:6]
 
 
+def _base(lead):
+    """'HSBC slides. (close)' and 'HSBC slides. (second source)' belong to the story 'HSBC slides.'"""
+    return re.sub(r"\s*\([^)]*\)\s*$", "", lead).strip().lower().rstrip(".")
+
+
+def market_figures(lines):
+    """{story: figures confirmed by its official-close line}: the closes and the % moves between them, so a web line
+    that repeats a close or the move computed from it is not reported as missing from the article."""
+    out = {}
+    for l in lines:
+        f = [x.strip() for x in l.split("|")]
+        if len(f) < 3 or "http" in f[2] or not re.search(r"market_data\.json|official close", f[2], re.I):
+            continue
+        # every number, date-like ones too: a close such as 86.01 must still count
+        nums = [float(v.replace(",", "")) for v in re.findall(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\.\d+", f[1])]
+        got = out.setdefault(_base(f[0]), set())
+        got |= {round(v, 2) for v in nums}
+        got |= {round(abs(a / b - 1) * 100, 2) for a in nums for b in nums if a != b and b}
+    return out
+
+
 def audit(lines, fetch=page_text):
     res = []
     cache = {}
+    known = market_figures(lines)
     for l in lines:
         f = [x.strip() for x in l.split("|")]
         if len(f) < 3 or not f[0]:
@@ -85,6 +107,7 @@ def audit(lines, fetch=page_text):
         sections = [u for u in urls if is_section_page(u)]
         urls = [u for u in urls if not is_section_page(u)]
         nums = figures(key)
+        web = [v for v in nums if round(float(v), 2) not in known.get(_base(lead), set())] if urls else nums
         if not urls and sections:
             res.append((lead, "NO SOURCE", "section page only: " + sections[0], nums))
             continue
@@ -102,14 +125,15 @@ def audit(lines, fetch=page_text):
                 texts.append(cache[u]); where = u
         if not texts:
             status = "UNREACHABLE"
-        elif not nums:
+        elif not web:
             kw = keywords(key) or keywords(lead)
             hit = sum(1 for w in kw if any(re.search(r"\b" + re.escape(w) + r"\b", x, re.I) for x in texts))
             status = "CONFIRMED" if kw and hit >= max(1, (len(kw) + 1) // 2) else ("PARTIAL" if hit else "NOT FOUND")
         else:
-            found = sum(1 for v in nums if any(on_page(v, x) for x in texts))
-            # at least half of the logged figures (and at least one) must be printed on the cited pages
-            status = "CONFIRMED" if found >= max(1, (len(nums) + 1) // 2) else ("PARTIAL" if found else "NOT FOUND")
+            found = sum(1 for v in web if any(on_page(v, x) for x in texts))
+            # at least half of the logged figures (and at least one) must be printed on the cited pages; figures the
+            # story's official-close line already confirms are not looked for on the article
+            status = "CONFIRMED" if found >= max(1, (len(web) + 1) // 2) else ("PARTIAL" if found else "NOT FOUND")
         res.append((lead, status, where, nums))
     return res
 

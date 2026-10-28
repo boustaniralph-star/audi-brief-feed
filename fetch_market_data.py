@@ -13,7 +13,9 @@ RIYADH = dt.timezone(dt.timedelta(hours=3))
 YAHOO = [("S&P 500", "^GSPC"), ("Nasdaq Composite", "^IXIC"), ("Dow Jones", "^DJI"), ("STOXX 600", "^STOXX"),
          ("DAX", "^GDAXI"), ("CAC 40", "^FCHI"), ("FTSE 100", "^FTSE"), ("Nikkei 225", "^N225"),
          ("Hang Seng", "^HSI"), ("Sensex", "^BSESN"), ("Brent", "BZ=F"), ("WTI", "CL=F"),
-         ("Gold", "GC=F"), ("Dollar Index", "DX-Y.NYB")]
+         ("Gold", "GC=F"), ("Dollar Index", "DX-Y.NYB"),
+         # 28.10.2026: Brazil's 13.88% fall on 26.10 went unreported because no feed row showed it
+         ("Ibovespa", "^BVSP"), ("Kospi", "^KS11")]
 TENORS = [("US 2Y yield", "2 Yr"), ("US 10Y yield", "10 Yr"), ("US 30Y yield", "30 Yr")]
 
 
@@ -311,7 +313,7 @@ def main():
         if r["name"] in MAJOR and r["chgDay"] == 0:
             print(f"::warning::{r['name']} shows an exact 0.0 day change (close {r['close']}, asOf {r['asOf']}); check the baseline")
     if len(rows) < 17:
-        sys.exit(f"only {len(rows)} of 20 instruments resolved")
+        sys.exit(f"only {len(rows)} of 22 instruments resolved")
 
 
 if __name__ == "__main__":

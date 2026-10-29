@@ -454,6 +454,9 @@ def send():
                "facts": {"summary": factline, "doubts": [f"{st}: {lead}" for lead, st, u, n in doubts]}}, open(MARK, "w"))
     # chart-rotation memory: one ledger line per sent edition, kept in the repo so the writer never loses days
     led = next((l.strip() for l in sec.get("LEDGER", "").splitlines() if re.match(r"\d\d-\d\d-\d{4}:", l.strip())), "")
+    if led and "cotd=" not in led and content.get("cotd", {}).get("name"):
+        # the Company of the Day goes on the ledger line, so the rotation check needs no past email
+        led += "; cotd=" + re.sub(r"[;\n]", " ", content["cotd"]["name"]).strip()
     if led:
         lp = os.path.join(HERE, "sent", "ledger.txt")
         old_l = open(lp, encoding="utf-8").read().splitlines() if os.path.exists(lp) else []

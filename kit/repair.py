@@ -112,8 +112,27 @@ def storylines(content, series, md):
     return c, log
 
 
+def zero_moves(content, txt):
+    """'-0.00%' reads as a fall: an unchanged close is printed '0.00%'."""
+    rx = re.compile(r"(?<![\d.])-0\.00%")
+    n = len(rx.findall(txt))
+    def walk(o):
+        nonlocal n
+        if isinstance(o, str):
+            n += len(rx.findall(o)); return rx.sub("0.00%", o)
+        if isinstance(o, list): return [walk(v) for v in o]
+        if isinstance(o, dict): return {k: walk(v) for k, v in o.items()}
+        return o
+    c = walk(copy.deepcopy(content))
+    return c, rx.sub("0.00%", txt), ([f"{n} unchanged close(s) printed as -0.00% now read 0.00%"] if n else [])
+
+
 def all_repairs(content, txt, md):
     log = []
+    try:
+        content, txt, l = zero_moves(content, txt); log += l
+    except Exception as e:
+        log.append(f"zero-move repair skipped ({type(e).__name__})")
     try:
         series = _repo_json("series.json")
         content, l = storylines(content, series, md); log += l

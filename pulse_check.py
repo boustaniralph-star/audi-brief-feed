@@ -234,6 +234,12 @@ if ledger:
             if rep: warn(RS + f"card {slot} repeats {', '.join(rep)} from the last 2 editions; rotate to another type on the menu")
             if L and sorted(now) == sorted(slot_types(L[-1], slot)) and not set(charts_now) <= theme_types():
                 warn(RS + f"card {slot} is the same combination as yesterday")
+        # Company of the Day: never one of the last 7 editions' (ledger cotd=, recorded by GitHub from 29.10.2026)
+        L7 = [l for l in open(ledger, encoding="utf-8-sig").read().splitlines() if re.match(r"\d\d-\d\d-\d{4}:", l) and not l.startswith(today_d.strftime("%d-%m-%Y"))][-7:]
+        past_cotd = {m.group(1).strip().lower(): l[:10] for l in L7 for m in [re.search(r"cotd=([^;]+)", l)] if m}
+        nm_now = C.get("cotd", {}).get("name", "").strip().lower()
+        if nm_now and nm_now in past_cotd:
+            warn(RS + f"Company of the Day {C['cotd']['name']} was already Company of the Day on {past_cotd[nm_now]}; pick another company (last 7 editions)")
         ex_now = [x["type"] for _, x in specs()]
         for kind in ("alumni", "levels"):
             if kind in ex_now and L and re.search(kind, L[-1]): warn(f"{kind} was used in the previous edition")
@@ -847,6 +853,17 @@ if pdf:
                 short += 1; warn(f"DESKTOP STANDARD (fix, do not justify): page 1 {col} column ends {gap:.0f} pt above the footer (full editions end within about 40 pt): add a hero, a story or a callout")
         if not short: OK.append("page 1 columns filled")
     except Exception as e: warn(f"page fill check skipped: {e}")
+
+# CALENDAR WORDING (Ralph, 29.10.2026: "'time TBC' and 'no major events' are not something I want in the brief"):
+# an unconfirmed time is written "today" or the day name, and a quiet region shows its next real events
+try:
+    if txt and today_d >= dt.date(2026, 10, 30):
+        _cal = open(txt, encoding="utf-8").read()
+        _cal = _cal[_cal.find("ECONOMIC & MARKET CALENDAR"):] if "ECONOMIC & MARKET CALENDAR" in _cal else ""
+        for _m in re.finditer(r"[^\n]*\b(no major events?|nothing major|TBC|TBA|to be confirmed|time unconfirmed)\b[^\n]*", _cal, re.I):
+            warn("DESKTOP STANDARD (fix, do not justify): calendar says '" + _m.group(0).strip()[:80] + "'; never write 'no major events' or 'TBC': "
+                 "give an unconfirmed time as 'today' or the day name, and for a quiet region list its next real events")
+except Exception as e: warn(f"calendar wording check skipped: {e}")
 
 # MAJOR MOVES (28.10.2026: the Ibovespa fell 13.88% on 26.10, the day after Lula's win, and the 27.10 edition did not say so):
 # an index move of 3% or more, or a commodity move of 4% or more, in the latest session is news and goes in the brief

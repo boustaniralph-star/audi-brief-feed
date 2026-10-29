@@ -15,7 +15,6 @@ body{margin:0;font-family:I;color:var(--navy);font-size:8.8pt;line-height:1.37}
 .up{color:var(--up)}.dn{color:var(--dn)}
 /* masthead */
 .mast{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:4mm;margin-bottom:6mm;border-bottom:2.2pt solid var(--navy);position:relative}
-.mast:after{content:"";position:absolute;left:0;bottom:-4.4pt;width:38mm;height:2.2pt;background:var(--steel)}
 .mast .wm{height:9.5mm;display:block;margin-bottom:2mm}
 .mast .circ{height:17mm}
 .kicker{font-size:8pt;letter-spacing:.18em;text-transform:uppercase;color:var(--steel);font-weight:700}

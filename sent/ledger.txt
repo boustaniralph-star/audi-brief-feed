@@ -19,3 +19,4 @@
 26-10-2026: hero=line; A=index_board+weekmap; B=storyline+tiles; panels=Al Rajhi Q3 profit lead+Jarir retail profit; extras=numday,teaser; sectors=none
 27-10-2026: hero=guidance; A=heatmap+movers; B=commodities+tiles; panels=Saudi trade surplus shrinks+Saudi data center build cost; extras=numday,teaser; sectors=none
 28-10-2026: hero=intraday; A=week+topmovers; B=rates+tiles; panels=Saudi contract awards slow+Gulf oil exports recover; extras=numday,teaser,topmovers-sp; sectors=none
+29-10-2026: hero=line; A=ytd+multiples; B=rebased+rates_trend; panels=stc's Q3 profit dip+Americana's profit jump; extras=numday,teaser; sectors=none

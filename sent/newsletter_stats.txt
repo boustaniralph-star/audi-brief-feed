@@ -104,3 +104,27 @@
 28-10-2026 | The Daily Skimm | SKIMMED | 0
 28-10-2026 | The Rundown AI | SKIMMED | 0
 28-10-2026 | Morning Brew | SKIMMED | 0
+29-10-2026 | EnterpriseAM Saudi | READ | 7
+29-10-2026 | Bloomberg | READ | 4
+29-10-2026 | Reuters | READ | 0
+29-10-2026 | Investopedia | SKIMMED | 0
+29-10-2026 | Investopedia | SKIMMED | 0
+29-10-2026 | Brew Markets | SKIMMED | 0
+29-10-2026 | Front Office Sports | SKIMMED | 0
+29-10-2026 | SoFi | SKIMMED | 0
+29-10-2026 | Tech Brew | SKIMMED | 0
+29-10-2026 | Retail Brew | SKIMMED | 0
+29-10-2026 | Investopedia | SKIMMED | 0
+29-10-2026 | CFO Brew | SKIMMED | 0
+29-10-2026 | Ground News | SKIMMED | 0
+29-10-2026 | Investopedia | SKIMMED | 0
+29-10-2026 | Front Office Sports | SKIMMED | 0
+29-10-2026 | Bloomberg | SKIMMED | 0
+29-10-2026 | Exec Sum - Litquidity | SKIMMED | 0
+29-10-2026 | Business Insider | SKIMMED | 0
+29-10-2026 | History Facts | SKIMMED | 0
+29-10-2026 | Snacks | SKIMMED | 0
+29-10-2026 | The Daily Skimm | SKIMMED | 0
+29-10-2026 | The Rundown AI | SKIMMED | 0
+29-10-2026 | Morning Brew | SKIMMED | 0
+29-10-2026 | Investopedia | SKIMMED | 0

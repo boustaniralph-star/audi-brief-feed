@@ -21,3 +21,4 @@
 28-10-2026: hero=intraday; A=week+topmovers; B=rates+tiles; panels=Saudi contract awards slow+Gulf oil exports recover; extras=numday,teaser,topmovers-sp; sectors=none; cotd=Boeing
 29-10-2026: hero=line; A=ytd+multiples; B=rebased+rates_trend; panels=stc's Q3 profit dip+Americana's profit jump; extras=numday,teaser; sectors=none; cotd=Petro Rabigh
 30-10-2026: hero=line; A=scorecard+movers; B=storyline+tiles; panels=Gulf bourses on Thursday+SPIMACO swings to a loss; extras=numday,loop,teaser,storyline; sectors=none; cotd=Alphabet
+31-10-2026: hero=valuewiped; A=month+weekmap; B=commodities+tiles; panels=Saudi banks' September profit+Saudi central bank assets dip; extras=numday,teaser,weekmap; sectors=none; cotd=Intel
